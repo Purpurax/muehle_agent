@@ -2,5 +2,9 @@
 use muehle_agent::engine;
 
 fn main() {
-    engine::run2();
+    
+    // TODO: Create an argument parser, which can take additional Parameters
+
+    
+    engine::run();
 }

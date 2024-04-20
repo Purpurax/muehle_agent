@@ -8,3 +8,4 @@ edition = "2021"
 
 [dependencies]
 iced = {version = "0.12.1", features = ["advanced", "image"]}
+regex = "1.10.4"

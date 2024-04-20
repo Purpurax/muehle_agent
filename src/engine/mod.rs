@@ -4,7 +4,7 @@ use regex;
 pub mod logic;
 pub mod rendering;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Piece {
     None,
     White,

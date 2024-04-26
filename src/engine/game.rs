@@ -1,8 +1,21 @@
 use std::collections::HashSet;
 
-use ggez::{graphics::Image, Context};
+use ggez::{graphics::Image, input::gamepad::gilrs::MappingError, Context};
 
 use crate::engine;
+
+#[derive(Debug)]
+pub struct FieldError {
+    pub message: String,
+}
+impl FieldError {
+    fn new(message: &str) -> FieldError {
+        FieldError {
+            message: message.to_string()
+        }
+    }
+}
+
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Piece {
@@ -19,6 +32,7 @@ pub struct Game {
     */
     board: [[Piece; 3]; 8],
     player_turn: Piece,
+    carry_piece: (Piece, Option<Image>), 
     
     // Amount of stones left to be placed by both players
     setup_phase: u8,
@@ -42,7 +56,8 @@ impl Game {
             setup_phase: 18,
             win: false,
             images: [background_image, piece_white_image, piece_black_image],
-            window_scale: window_scale
+            window_scale: window_scale,
+            carry_piece: (Piece::None, Option::None),
         }
     }
     
@@ -68,8 +83,28 @@ impl Game {
         }
     }
 
-    pub fn get_player_turn(self) -> Piece {
+    pub fn get_player_turn(&mut self) -> Piece {
         self.player_turn
+    }
+
+    pub fn get_piece_color(&mut self, x:usize, ring:usize) -> Piece {
+        self.board[x][ring]
+    }
+
+    pub fn get_carry_piece(&mut self) -> (Piece, Option<Image>) {
+        self.carry_piece.clone()
+    }
+
+    pub fn set_carry_piece(&mut self, piece_color: Piece) {
+        let image: Option<Image>;
+        if piece_color == Piece::White {
+            image = Option::Some(self.images[1].clone());
+        } else if piece_color == Piece::Black {
+            image = Option::Some(self.images[2].clone());
+        } else {
+            image = Option::None;
+        }
+        self.carry_piece = (piece_color, image);
     }
 
     /*
@@ -78,11 +113,11 @@ impl Game {
         A Hashset is being created and will keep (through set intersection) possible values for x and ring.
         If the Hashset is inconclusive or empty, the click is not on any field.
     */
-    pub fn get_piece(self, x:f32, y:f32) -> (usize, usize, Piece){
+    pub fn get_board_indices(&mut self, x:f32, y:f32) -> Result<(usize, usize), FieldError>{
         let accuracy: f32 = 0.2; // 1 -> pixel perfect, 0 -> will lead to hitbox overlapping
 
-        let remaining_x: HashSet<i32> = HashSet::from([0,1,2,3,4,5,6,7]);
-        let remaining_ring: HashSet<i32> = HashSet::from([0,1,2]);
+        let mut remaining_x: HashSet<i32> = HashSet::from([0,1,2,3,4,5,6,7]);
+        let mut remaining_ring: HashSet<i32> = HashSet::from([0,1,2]);
 
         for (index, spot) in [165.0, 325.0, 485.0, 635.0, 785.0, 945.0, 1105.0].iter().enumerate() {
             let min_border: f32 = spot*self.window_scale*(1.0-accuracy);
@@ -90,33 +125,32 @@ impl Game {
 
             if x > min_border && x < max_border {
                 if index < 3 {
-                    remaining_x.intersection(&HashSet::from([0,6,7]));
-                    remaining_ring.intersection(&HashSet::from([index as i32]));
+                    remaining_x = remaining_x.intersection(&HashSet::from([0,6,7])).cloned().collect();
+                    remaining_ring = remaining_ring.intersection(&HashSet::from([index as i32])).cloned().collect();
                 } else if index == 3 {
-                    remaining_x.intersection(&HashSet::from([1,5]));
+                    remaining_x = remaining_x.intersection(&HashSet::from([1,5])).cloned().collect();
                 } else {
-                    remaining_x.intersection(&HashSet::from([2,3,4]));
-                    remaining_ring.intersection(&HashSet::from([6 - (index as i32)]));
+                    remaining_x = remaining_x.intersection(&HashSet::from([2,3,4])).cloned().collect();
+                    remaining_ring = remaining_ring.intersection(&HashSet::from([6 - (index as i32)])).cloned().collect();
                 }
             }
             if y > min_border && y < max_border {
                 if index < 3 {
-                    remaining_x.intersection(&HashSet::from([0,1,2]));
-                    remaining_ring.intersection(&HashSet::from([index as i32]));
+                    remaining_x = remaining_x.intersection(&HashSet::from([0,1,2])).cloned().collect();
+                    remaining_ring = remaining_ring.intersection(&HashSet::from([index as i32])).cloned().collect();
                 } else if index == 3 {
-                    remaining_x.intersection(&HashSet::from([3,7]));
+                    remaining_x = remaining_x.intersection(&HashSet::from([3,7])).cloned().collect();
                 } else {
-                    remaining_x.intersection(&HashSet::from([4,5,6]));
-                    remaining_ring.intersection(&HashSet::from([6 - (index as i32)]));
+                    remaining_x = remaining_x.intersection(&HashSet::from([4,5,6])).cloned().collect();
+                    remaining_ring = remaining_ring.intersection(&HashSet::from([6 - (index as i32)])).cloned().collect();
                 }
             }
         }
 
         if remaining_x.len() != 1 || remaining_ring.len() != 1 {
-            
+            return Err(FieldError::new("The clicked position is invalid, please try again"));
         }
-
-        return (1,2,Piece::None);
+        return Ok((*remaining_x.iter().next().unwrap() as usize, *remaining_ring.iter().next().unwrap() as usize));
     }
 
     fn get_sorted_board(&self) -> [[Piece; 3]; 8] {
@@ -142,6 +176,13 @@ impl Game {
         }
 
         return sorted_board;
+    }
+
+    pub fn clear_field(&mut self, x:usize, ring:usize) {
+        let mut new_board = self.board.clone();
+        new_board[x][ring] = Piece::None;
+
+        self.board = new_board;
     }
 
     fn set_win(&mut self, win: bool) {

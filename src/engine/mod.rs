@@ -1,6 +1,8 @@
 pub mod logic;
 pub mod game;
 
+use std::io::Cursor;
+
 use ggez::conf::{FullscreenType, WindowMode};
 use ggez::mint::Vector2;
 use ggez::{Context, ContextBuilder, GameError, GameResult};
@@ -14,12 +16,11 @@ use self::game::Game;
 
 impl EventHandler for game::Game {
     fn update(&mut self, _gtx: &mut Context) -> GameResult {
-
-
-
+        
+        
         Ok(())
     }
-
+    
     fn draw(&mut self, gtx: &mut Context) -> GameResult {
         let mut canvas = graphics::Canvas::from_frame(gtx, Color::WHITE);
         
@@ -28,7 +29,20 @@ impl EventHandler for game::Game {
             graphics::DrawParam::new()
             .scale(Vector2::from_slice(&[self.window_scale; 2]))
         );
-        
+
+        if self.get_carry_piece().1.is_some() {
+            canvas.draw(
+                &self.get_carry_piece().1.unwrap(),
+                graphics::DrawParam::new()
+                .dest_rect(Rect {
+                    x: gtx.mouse.position().x - (80.0*self.window_scale),
+                    y: gtx.mouse.position().y - (80.0*self.window_scale),
+                    h: self.window_scale,
+                    w: self.window_scale
+                })
+            );
+        }
+    
         for (x, diagonal_row) in self.get_board().iter().enumerate() {
             for (ring, element) in diagonal_row.iter().enumerate() {
                 let image;
@@ -52,8 +66,8 @@ impl EventHandler for game::Game {
                     } else {
                         1105.0 - (ring as f32)*160.0
                     } -80.0) * self.window_scale,
-                    w:self.window_scale,
-                    h:self.window_scale
+                    w: self.window_scale,
+                    h: self.window_scale
                 };
                 
                 canvas.draw(
@@ -77,11 +91,16 @@ impl EventHandler for game::Game {
             y: f32,
         ) -> Result<(), GameError> {
         
-        let (board_x, board_ring, piece_color) = self.get_piece(x, y);
-        if piece_color == self.get_player_turn() {
-            self.clear_field(board_x, board_ring);
-            self.set_carry_piece(board_x, board_ring, piece_color);
-        }
+        match self.get_board_indices(x, y) {
+            Ok((board_x, board_ring)) => {
+                let piece_color: Piece = self.get_piece_color(board_x, board_ring);
+                if piece_color == self.get_player_turn() {
+                    self.clear_field(board_x, board_ring);
+                    
+                }
+            },
+            Err(e) => println!("{}", e.message)
+        };
 
         Ok(())
     }

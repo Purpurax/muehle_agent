@@ -1,10 +1,10 @@
 use crate::engine;
 
 pub fn move_piece(player_color: engine::Piece, move_from: (i8, i8), move_to: (i8, i8), mut board: [[engine::Piece; 3]; 8]) -> (bool, [[engine::Piece; 3]; 8]) {
-    if board[move_from.0 as usize][move_from.1 as usize] != player_color {
+    if board[move_from.0 as usize][move_from.1 as usize] != player_color { // desired piece is of wrong color or none
         return (false, board);
     }
-    if board[move_to.0 as usize][move_to.1 as usize] != engine::Piece::None {
+    if board[move_to.0 as usize][move_to.1 as usize] != engine::Piece::None { // desired spot is not empty
         return (false, board);
     }
 
@@ -27,6 +27,42 @@ fn is_neighbor(position1: (i8, i8), position2: (i8, i8)) -> bool {
     }
     return false;
 }
+
+fn is_creating_mill(player_color: engine::Piece, position: (i8, i8), board: [[engine::Piece; 3]; 8]) -> bool {
+    let pos_x: usize = position.0 as usize;
+    let pos_ring: usize = position.0 as usize;
+
+    
+    // mill not changing ring
+    if pos_x%2 == 0 { // corner position
+        if board[(pos_x + 1)%8][pos_ring] == player_color && board[(pos_x + 2)%8][pos_ring] == player_color {
+            return true;
+        }
+        if board[(pos_x - 1)%8][pos_ring] == player_color && board[(pos_x - 2)%8][pos_ring] == player_color {
+            return true;
+        }
+    } else { // middle position
+        if board[(pos_x + 1)%8][pos_ring] == player_color && board[(pos_x - 1)%8][pos_ring] == player_color {
+            return true;
+        }
+        // mill crossing ring
+        if board[pos_x][(pos_ring + 1)%3] == player_color && board[pos_x][(pos_ring + 2)%3] == player_color {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+
+
+
+
+
+
+
+
 
 
 

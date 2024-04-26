@@ -1,0 +1,49 @@
+use crate::engine;
+
+use ggez::{Context, ContextBuilder, GameResult};
+use ggez::graphics::{self, Color};
+use ggez::event::{self, EventHandler};
+
+pub fn run(mut game: engine::Game) {
+    // Make a Context.
+    let (mut ctx, event_loop) = ContextBuilder::new("Mühle Agent", "Max Warkentin")
+        .build()
+        .expect("Could not create ggez context!");
+
+    // Create an instance of your event handler.
+    // Usually, you should provide it with the Context object to
+    // use when setting your game up.
+    let my_game = MyGame::new(&mut ctx, &mut game);
+
+    // Run!
+    event::run(ctx, event_loop, my_game);
+}
+
+struct MyGame {
+    game: engine::Game
+}
+
+impl MyGame {
+    pub fn new(_ctx: &mut Context, game: &mut engine::Game) -> MyGame {
+        // Load/create resources such as images here.
+        MyGame {
+            game: game,
+        }
+    }
+}
+
+impl EventHandler for MyGame {
+    fn update(&mut self, _ctx: &mut Context) -> GameResult {
+        engine::game_loop(self.game);
+
+        Ok(())
+    }
+
+    fn draw(&mut self, ctx: &mut Context) -> GameResult {
+        let mut canvas = graphics::Canvas::from_frame(ctx, Color::WHITE);
+        
+
+
+        canvas.finish(ctx)
+    }
+}

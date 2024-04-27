@@ -1,37 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
-use ggez::{graphics::Image, input::gamepad::gilrs::MappingError, Context};
+use ggez::{graphics::Image, Context};
 
-use crate::engine;
+use super::{enums::{CarryPiece, FieldError, Piece, State}, logic};
 
-#[derive(Debug)]
-pub struct FieldError {
-    pub message: String,
-}
-impl FieldError {
-    fn new(message: String) -> FieldError {
-        FieldError {
-            message
-        }
-    }
-}
-
-
-#[derive(Clone, Copy, PartialEq, Debug, Hash, Eq)]
-pub enum Piece {
-    None,
-    White,
-    Black
-}
-
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub enum State {
-    Setup,
-    Normal,
-    Take,
-    End,
-    Win
-}
 
 pub struct Game {
     /* [[left-top-outer, left-top-middle, left-top-inner], [middle-top-outer, middle-top-middle, middle-top-inner] ...]
@@ -41,7 +13,7 @@ pub struct Game {
     */
     board: [[Piece; 3]; 8],
     player_turn: Piece,
-    carry_piece: Option<(usize, usize, Piece, Image)>,
+    carry_piece: Option<CarryPiece>,
     
     // Amount of stones left to be placed by both players
     state: State,
@@ -56,16 +28,16 @@ pub struct Game {
 impl Game {
     pub fn new(_gtx: &mut Context, window_scale: f32) -> Game {
 
-        let background_image = Image::from_path(_gtx, "/muehle_board.png").unwrap();
-        let piece_white_image = Image::from_path(_gtx, "/muehle_white_piece.png").unwrap();
-        let piece_white_outlined_image = Image::from_path(_gtx, "/muehle_white_piece_outlined.png").unwrap();
-        let piece_black_image = Image::from_path(_gtx, "/muehle_black_piece.png").unwrap();
-        let piece_black_outlined_image = Image::from_path(_gtx, "/muehle_black_piece_outlined.png").unwrap();
-        let take_white_image = Image::from_path(_gtx, "/muehle_white_piece_take.png").unwrap();
-        let take_black_image = Image::from_path(_gtx, "/muehle_black_piece_take.png").unwrap();
-        let empty_white_outlined_image = Image::from_path(_gtx, "/muehle_no_white_piece_outlined.png").unwrap();
-        let empty_black_outlined_image = Image::from_path(_gtx, "/muehle_no_black_piece_outlined.png").unwrap();
-        let empty_outlined_image = Image::from_path(_gtx, "/muehle_no_piece_outlined.png").unwrap();
+        let background_image: Image = Image::from_path(_gtx, "/muehle_board.png").unwrap();
+        let piece_white_image: Image = Image::from_path(_gtx, "/muehle_white_piece.png").unwrap();
+        let piece_white_outlined_image: Image = Image::from_path(_gtx, "/muehle_white_piece_outlined.png").unwrap();
+        let piece_black_image: Image = Image::from_path(_gtx, "/muehle_black_piece.png").unwrap();
+        let piece_black_outlined_image: Image = Image::from_path(_gtx, "/muehle_black_piece_outlined.png").unwrap();
+        let take_white_image: Image = Image::from_path(_gtx, "/muehle_white_piece_take.png").unwrap();
+        let take_black_image: Image = Image::from_path(_gtx, "/muehle_black_piece_take.png").unwrap();
+        let empty_white_outlined_image: Image = Image::from_path(_gtx, "/muehle_no_white_piece_outlined.png").unwrap();
+        let empty_black_outlined_image: Image = Image::from_path(_gtx, "/muehle_no_black_piece_outlined.png").unwrap();
+        let empty_outlined_image: Image = Image::from_path(_gtx, "/muehle_no_piece_outlined.png").unwrap();
 
         Game {
             board: [[Piece::None; 3]; 8],
@@ -116,7 +88,7 @@ impl Game {
         self.board[x][ring]
     }
 
-    pub fn get_carry_piece(&mut self) -> Option<(usize, usize, Piece, Image)> {
+    pub fn get_carry_piece(&mut self) -> Option<CarryPiece> {
         self.carry_piece.clone()
     }
 
@@ -136,23 +108,22 @@ impl Game {
             self.carry_piece = Option::None;
             return
         }
-        self.carry_piece = Option::Some((x, ring, piece_color, image));
+        self.carry_piece = Option::Some(CarryPiece::new(x, ring, piece_color, image));
     }
 
     pub fn undo_carry(&mut self) {
         if self.get_carry_piece().is_some() {
-            let (x, ring, piece_color, _image) = self.get_carry_piece().unwrap();
+            let (x, ring, piece_color, _image) = self.get_carry_piece().unwrap().into();
             self.board[x][ring] = piece_color;
             self.set_carry_piece(Option::None);
         }
     }
 
-    /*
-        Calculates which field is being clicked by having formed a rectangle around each position
-
-        A Hashset is being created and will keep (through set intersection) possible values for x and ring.
-        If the Hashset is inconclusive or empty, the click is not on any field.
-    */
+    /// Calculates which field is being clicked by having formed a rectangle around each position
+    /// 
+    /// A Hashset is being created and will keep (through set intersection) possible values for x and ring.
+    /// If the Hashset is inconclusive or empty, the click is not on any field.
+    /// See more on coordinates-datastructure-connection.jpg
     pub fn get_board_indices(&mut self, x:f32, y:f32) -> Result<(usize, usize), FieldError>{
         let accuracy: f32 = 65.0;
 
@@ -226,12 +197,13 @@ impl Game {
 
     pub fn update_state(&mut self, state: Option<State>) {
         self.update_piece_count();
-        if state.is_some() && state.unwrap() == State::Take {
+        if state.is_some() {
             self.state = state.unwrap();
-        } else {
+        }
+        if self.state != State::Take {
             if self.setup_pieces_left > 0 {
                 self.state = State::Setup;
-            } else if self.piece_count[&Piece::White] < 3 || self.piece_count[&Piece::Black] < 3 {
+            } else if self.piece_count[&Piece::White] < 3 || self.piece_count[&Piece::Black] < 3 || logic::is_soft_locked(self.get_player_turn(), self.get_board()) {
                 self.state = State::Win;
             } else if self.piece_count[&Piece::White] == 3 || self.piece_count[&Piece::Black] == 3 {
                 self.state = State::End;
@@ -244,14 +216,5 @@ impl Game {
     pub fn reduce_setup_pieces_left(&mut self) {
         self.setup_pieces_left -= 1;
         self.update_piece_count();
-    }
-
-
-
-
-    pub fn set_example_board(&mut self) {
-        self.board = [[Piece::None, Piece::White, Piece::Black]; 8];
-        self.setup_pieces_left = 0;
-        self.update_state(Option::None);
     }
 }

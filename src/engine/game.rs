@@ -17,7 +17,7 @@ impl FieldError {
 }
 
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug, Hash, Eq)]
 pub enum Piece {
     None,
     White,
@@ -29,6 +29,7 @@ pub enum State {
     Setup,
     Normal,
     Take,
+    End,
     Win
 }
 
@@ -45,6 +46,7 @@ pub struct Game {
     // Amount of stones left to be placed by both players
     state: State,
     setup_pieces_left: u8,
+    piece_count: HashMap<Piece, u8>,
     
     pub images: HashMap<String, Image>,
     pub window_scale: f32,
@@ -59,22 +61,29 @@ impl Game {
         let piece_white_outlined_image = Image::from_path(_gtx, "/muehle_white_piece_outlined.png").unwrap();
         let piece_black_image = Image::from_path(_gtx, "/muehle_black_piece.png").unwrap();
         let piece_black_outlined_image = Image::from_path(_gtx, "/muehle_black_piece_outlined.png").unwrap();
+        let take_white_image = Image::from_path(_gtx, "/muehle_white_piece_take.png").unwrap();
+        let take_black_image = Image::from_path(_gtx, "/muehle_black_piece_take.png").unwrap();
         let empty_white_outlined_image = Image::from_path(_gtx, "/muehle_no_white_piece_outlined.png").unwrap();
         let empty_black_outlined_image = Image::from_path(_gtx, "/muehle_no_black_piece_outlined.png").unwrap();
+        let empty_outlined_image = Image::from_path(_gtx, "/muehle_no_piece_outlined.png").unwrap();
 
         Game {
             board: [[Piece::None; 3]; 8],
             player_turn: Piece::White,
             state: State::Setup,
             setup_pieces_left: 18,
+            piece_count: HashMap::from([(Piece::White, 0), (Piece::Black, 0)]),
             images: HashMap::from([
                 ("background".to_string(), background_image),
                 ("white".to_string(), piece_white_image),
                 ("white outlined".to_string(), piece_white_outlined_image),
                 ("black".to_string(), piece_black_image),
                 ("black outlined".to_string(), piece_black_outlined_image),
+                ("take white".to_string(), take_white_image),
+                ("take black".to_string(), take_black_image),
                 ("empty white outlined".to_string(), empty_white_outlined_image),
                 ("empty black outlined".to_string(), empty_black_outlined_image),
+                ("outline".to_string(), empty_outlined_image),
             ]),
             window_scale: window_scale,
             carry_piece: Option::None,
@@ -184,6 +193,26 @@ impl Game {
         return Ok((*remaining_x.iter().next().unwrap() as usize, *remaining_ring.iter().next().unwrap() as usize));
     }
 
+    fn update_piece_count(&mut self) {
+        let mut count_white: u8 = 0;
+        let mut count_black: u8 = 0;
+        for pack in self.board.iter() {
+            for element in pack.iter() {
+                if *element == Piece::White {
+                    count_white += 1;
+                } else if *element == Piece::Black {
+                    count_black += 1;
+                }
+            }
+        }
+        self.piece_count.insert(Piece::White, count_white);
+        self.piece_count.insert(Piece::Black, count_black);
+    }
+
+    pub fn get_piece_count(&mut self, piece_color: Piece) -> u8 {
+        return self.piece_count[&piece_color];
+    }
+
     pub fn set_field(&mut self, x:usize, ring:usize, piece_color: Piece) {
         let mut new_board: [[Piece; 3]; 8] = self.board.clone();
         new_board[x][ring] = piece_color;
@@ -196,16 +225,33 @@ impl Game {
     }
 
     pub fn update_state(&mut self, state: Option<State>) {
-        if state.is_some() {
+        self.update_piece_count();
+        if state.is_some() && state.unwrap() == State::Take {
             self.state = state.unwrap();
-        } else if self.state == State::Setup && self.setup_pieces_left == 0 {
-            self.state = State::Normal;
         } else {
-
+            if self.setup_pieces_left > 0 {
+                self.state = State::Setup;
+            } else if self.piece_count[&Piece::White] < 3 || self.piece_count[&Piece::Black] < 3 {
+                self.state = State::Win;
+            } else if self.piece_count[&Piece::White] == 3 || self.piece_count[&Piece::Black] == 3 {
+                self.state = State::End;
+            } else {
+                self.state = State::Normal;
+            }
         }
     }
 
     pub fn reduce_setup_pieces_left(&mut self) {
         self.setup_pieces_left -= 1;
+        self.update_piece_count();
+    }
+
+
+
+
+    pub fn set_example_board(&mut self) {
+        self.board = [[Piece::None, Piece::White, Piece::Black]; 8];
+        self.setup_pieces_left = 0;
+        self.update_state(Option::None);
     }
 }

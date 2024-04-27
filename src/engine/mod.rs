@@ -53,10 +53,62 @@ impl EventHandler for game::Game {
                     (State::Setup, Piece::Black, Piece::White) => image = self.images["white"].clone(),
                     (State::Setup, Piece::White, Piece::None) => image = self.images["empty white outlined"].clone(),
                     (State::Setup, Piece::Black, Piece::None) => image = self.images["empty black outlined"].clone(),
-                    (State::Normal, Piece::White, Piece::White) => image = self.images["white outlined"].clone(),
-                    (State::Normal, Piece::White, Piece::Black) => image = self.images["black"].clone(),
-                    (State::Normal, Piece::Black, Piece::Black) => image = self.images["black outlined"].clone(),
-                    (State::Normal, Piece::Black, Piece::White) => image = self.images["white"].clone(),
+                    (State::Normal | State::End, Piece::White, Piece::White) => {
+                        if self.get_carry_piece().is_some() {
+                            image = self.images["white"].clone();
+                        } else {
+                            image = self.images["white outlined"].clone();
+                        }
+                    },
+                    (State::Normal | State::End, Piece::White, Piece::Black) => image = self.images["black"].clone(),
+                    (State::Normal | State::End, Piece::Black, Piece::Black) => {
+                        if self.get_carry_piece().is_some() {
+                            image = self.images["black"].clone();
+                        } else {
+                            image = self.images["black outlined"].clone();
+                        }
+                    },
+                    (State::Normal | State::End, Piece::Black, Piece::White) => image = self.images["white"].clone(),
+                    (State::Normal, _, Piece::None) => {
+                        let carry_piece = self.get_carry_piece();
+                        if carry_piece.is_some() {
+                            let (carry_x, carry_ring, _piece_color, _image) = carry_piece.unwrap();
+                            if logic::is_neighbor((carry_x, carry_ring), (x, ring)) {
+                                image = self.images["outline"].clone();
+                            } else { continue }
+                        } else { continue }
+                    },
+                    (State::Take, Piece::White, Piece::White) => image = self.images["white"].clone(),
+                    (State::Take, Piece::White, Piece::Black) => image = self.images["take black"].clone(),
+                    (State::Take, Piece::Black, Piece::Black) => image = self.images["black"].clone(),
+                    (State::Take, Piece::Black, Piece::White) => image = self.images["take white"].clone(),
+                    (State::End, _, Piece::None) => {
+                        let piece_color = self.get_player_turn();
+                        if self.get_piece_count(piece_color) == 3 {
+                            let carry_piece = self.get_carry_piece();
+                            if carry_piece.is_some() {
+                                let (carry_x, carry_ring, _piece_color, _image) = carry_piece.unwrap();
+                                if carry_x != x || carry_ring != ring {
+                                    image = self.images["outline"].clone();
+                                } else { continue }
+                            } else { continue }
+                        } else {
+                            let carry_piece = self.get_carry_piece();
+                            if carry_piece.is_some() {
+                                let (carry_x, carry_ring, _piece_color, _image) = carry_piece.unwrap();
+                                if logic::is_neighbor((carry_x, carry_ring), (x, ring)) {
+                                    image = self.images["outline"].clone();
+                                } else { continue }
+                            } else { continue }
+                        }
+                    },
+                    (State::Win, _, _) => {
+                        if self.get_player_turn() == Piece::Black {
+                            image = self.images["white"].clone();
+                        } else {
+                            image = self.images["black"].clone();
+                        }
+                    },
                     (_, _, _) => continue
                 }
                 let image_position: Rect = Rect {
@@ -102,7 +154,7 @@ impl EventHandler for game::Game {
         
         match self.get_state() {
             State::Setup => {},
-            State::Normal => {
+            State::Normal | State::End => {
                 match self.get_board_indices(x, y) {
                     Ok((board_x, board_ring)) => {
                         let piece_color: Piece = self.get_piece_color(board_x, board_ring);
@@ -121,11 +173,8 @@ impl EventHandler for game::Game {
                     },
                     Err(e) => println!("{}", e.message)
                 };
-            }, State::Take => {
-
-            }, State::Win => {
-
-            }
+            }, State::Take => {},
+            State::Win => { }
         }
 
         Ok(())
@@ -146,9 +195,14 @@ impl EventHandler for game::Game {
                         if self.get_piece_color(board_x, board_ring) == Piece::None {
                             let piece_color = self.get_player_turn();
                             self.set_field(board_x, board_ring, piece_color);
-                            self.next_player_turn();
                             self.reduce_setup_pieces_left();
-                            self.update_state(Option::None);
+                            
+                            if logic::is_creating_mill(piece_color, (board_x, board_ring), self.get_board()) {
+                                self.update_state(Option::Some(State::Take));
+                            } else {
+                                self.next_player_turn();
+                                self.update_state(Option::None);
+                            }
                         }
                     },
                     Err(e) => {println!("{}", e.message)}
@@ -162,8 +216,14 @@ impl EventHandler for game::Game {
                             let (successful, new_board) = logic::move_piece(carry_piece_color, (carry_x, carry_ring), (board_x, board_ring), self.get_board());
                             if successful {
                                 self.set_board(new_board);
-                                self.next_player_turn();
                                 self.set_carry_piece(Option::None);
+
+                                if logic::is_creating_mill(carry_piece_color, (board_x, board_ring), self.get_board()) {
+                                    self.update_state(Option::Some(State::Take));
+                                    println!("{} has created a mill", if carry_piece_color == Piece::White { "White" } else { "Black" });
+                                } else {
+                                    self.next_player_turn();
+                                }
                             } else {
                                 println!("Invalid position: {}.x {}.y", x, y);
                                 self.undo_carry();
@@ -176,13 +236,62 @@ impl EventHandler for game::Game {
                     Err(e) => {println!("{}", e.message); self.undo_carry();}
                 };
             }, State::Take => {
+                match self.get_board_indices(x, y) {
+                    Ok((board_x, board_ring)) => {
+                        // TODO check if piece is in mill
+                        let clicked_piece_color = self.get_piece_color(board_x, board_ring);
+                        if clicked_piece_color != Piece::None && clicked_piece_color != self.get_player_turn() {
+                            self.set_field(board_x, board_ring, Piece::None);
+                            self.next_player_turn();
+                            self.update_state(Option::Some(State::Normal));
+                        } else {
+                            println!("Invalid position: {}.x {}.y", x, y);
+                            self.undo_carry();
+                        }
+                    },
+                    Err(e) => {println!("{}", e.message); self.undo_carry();}
+                };
+            }, State::End => {
+                match self.get_board_indices(x, y) {
+                    Ok((board_x, board_ring)) => {
+                        let carry_piece = self.get_carry_piece();
+                        if carry_piece.is_some() {
+                            let (carry_x, carry_ring, carry_piece_color, _image) = carry_piece.unwrap();
+                            let (successful, new_board) = logic::move_piece(carry_piece_color, (carry_x, carry_ring), (board_x, board_ring), self.get_board());
+                            if self.get_piece_count(carry_piece_color) == 3 && (board_x != carry_x || board_ring != carry_ring) &&self.get_piece_color(board_x, board_ring) == Piece::None {
+                                self.set_board(new_board);
+                                self.set_carry_piece(Option::None);
 
-            }, State::Win => {
+                                if logic::is_creating_mill(carry_piece_color, (board_x, board_ring), self.get_board()) {
+                                    self.update_state(Option::Some(State::Take));
+                                    println!("{} has created a mill", if carry_piece_color == Piece::White { "White" } else { "Black" });
+                                } else {
+                                    self.next_player_turn();
+                                }
+                            } else if successful {
+                                self.set_board(new_board);
+                                self.set_carry_piece(Option::None);
 
-            }
+                                if logic::is_creating_mill(carry_piece_color, (board_x, board_ring), self.get_board()) {
+                                    self.update_state(Option::Some(State::Take));
+                                    println!("{} has created a mill", if carry_piece_color == Piece::White { "White" } else { "Black" });
+                                } else {
+                                    self.next_player_turn();
+                                }
+                            } else {
+                                println!("Invalid position: {}.x {}.y", x, y);
+                                self.undo_carry();
+                            }
+                        } else {
+                            println!("Invalid position: {}.x {}.y", x, y);
+                            self.undo_carry();
+                        }
+                    },
+                    Err(e) => {println!("{}", e.message); self.undo_carry();}
+                };
+            }, State::Win => { }
         }
-
-
+        
         Ok(())
     }
 }

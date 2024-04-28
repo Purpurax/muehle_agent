@@ -3,7 +3,7 @@ pub mod game;
 pub mod rendering;
 pub mod enums;
 
-use ggez::conf::{FullscreenType, WindowMode};
+use ggez::conf::{FullscreenType, WindowMode, WindowSetup};
 use ggez::mint::Vector2;
 use ggez::{Context, ContextBuilder, GameError, GameResult};
 use ggez::graphics::{self, Canvas, Color, DrawParam, Rect};
@@ -109,15 +109,24 @@ pub fn run(window_scale: f32) {
         fullscreen_type: FullscreenType::Windowed,
         ..Default::default()
     };
+    let window_setup = WindowSetup {
+        title: "Mühle Player vs Player ©Purpurax".to_string(),
+        icon: "/muehle_board_icon.png".to_string(),
+        ..Default::default()
+    };
 
     let (mut gtx, event_loop) = ContextBuilder::new("Mühle Agent", "Max Warkentin")
         .add_resource_path("assets")
         .window_mode(window_mode)
+        .window_setup(window_setup)
         .build()
         .expect("Could not create ggez context!");
 
 
     let game = Game::new(&mut gtx, window_scale);
+
+    // Uncomment for debugging:
+    // let game = Game::new(&mut gtx, window_scale).game.set_testing_board();
 
     event::run(gtx, event_loop, game);
 }

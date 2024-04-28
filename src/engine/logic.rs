@@ -186,14 +186,14 @@ fn compute_button_up(board_x: usize, board_ring: usize, piece_color: Piece, carr
             if (count == 3 && (board_x != carry_x || board_ring != carry_ring) && piece_color == Piece::None) || successful {
                 game.set_board(new_board);
                 game.set_carry_piece(Option::None);
+                if is_creating_mill(carry_piece_color, (board_x, board_ring), game.get_board()) {
+                    game.update_state(Option::Some(State::Take));
+                    println!("{} has created a mill", carry_piece_color.to_str());
+                } else {
+                    game.next_player_turn();
+                }
             }
             
-            if is_creating_mill(carry_piece_color, (board_x, board_ring), game.get_board()) {
-                game.update_state(Option::Some(State::Take));
-                println!("{} has created a mill", carry_piece_color.to_str());
-            } else {
-                game.next_player_turn();
-            }
         }, State::Win => { }
     }
     game.undo_carry();

@@ -62,6 +62,24 @@ impl Game {
         }
     }
     
+    pub fn set_example_board(&mut self) {
+        let new_board = [
+            [Piece::None, Piece::Black, Piece::Black],
+            [Piece::None, Piece::None, Piece::Black],
+            [Piece::None, Piece::None, Piece::Black],
+            [Piece::None, Piece::None, Piece::Black],
+            [Piece::Black, Piece::None, Piece::Black],
+            [Piece::White, Piece::White, Piece::White],
+            [Piece::None, Piece::None, Piece::None],
+            [Piece::None, Piece::None, Piece::None],
+        ];
+        self.board = new_board;
+        self.player_turn = Piece::White;
+        self.setup_pieces_left = 0;
+        self.state = State::End;
+        self.update_piece_count();
+    }
+    
     pub fn get_board(&mut self) -> [[Piece; 3]; 8] {
         self.board.clone()
     }
@@ -214,7 +232,14 @@ impl Game {
     }
 
     pub fn reduce_setup_pieces_left(&mut self) {
-        self.setup_pieces_left -= 1;
+        let setup_pieces_left = self.setup_pieces_left - 1;
+        self.setup_pieces_left = setup_pieces_left;
         self.update_piece_count();
+
+        let current_player_count: u8 = setup_pieces_left / 2;
+        let next_player_count: u8 = setup_pieces_left / 2 + (setup_pieces_left % 2);
+        println!("{} can place {} more pieces and {} can place {} more pieces",
+            Piece::White.to_str(), current_player_count,
+            Piece::Black.to_str(), next_player_count);
     }
 }

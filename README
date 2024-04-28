@@ -1,5 +1,6 @@
-Dies ist die Abgabe vom 21-04-2024
+Dies ist die Abgabe vom 27-04-2024
 
-**Informationen zum Code:** Der Ordner src/engine/rendering sollte nicht beachtet werden.
-Implementiert wurde für die Aufgabe so gut wie alles in src/engine/mod.rs, aber die moves und die Überprüfung dieser wurde in src/engine/logic/mod.rs implementiert.
-Entschieden habe ich mich für ein Array welches zum Verständnis in datastructure.png beschrieben wird.
+**Informationen zum Code:**
+Wo gewisse code abschnitte zu finden sind, sollte selbsterklärend sein.
+Bei der UI wird darg-and-drop simuliert.
+Für die Umwandlung von Koordinaten zu indices und anders herum kann der Rechenweg besser über coordinates-datastructure-connection.jpg nachvollzogen werden.

@@ -1,0 +1,4 @@
+board: BEEBWEBEBWBWBWWWBBBEWWEE
+player_turn: Black
+state: Normal
+setup_pieces_left: 0

@@ -2,12 +2,14 @@ pub mod logic;
 pub mod game;
 pub mod rendering;
 pub mod enums;
+pub mod snapshot;
 
 use ggez::conf::{FullscreenType, WindowMode, WindowSetup};
 use ggez::mint::Vector2;
+use ggez::winit::window;
 use ggez::{Context, ContextBuilder, GameError, GameResult};
 use ggez::graphics::{self, Canvas, Color, DrawParam, Rect};
-use ggez::event::{self, EventHandler};
+use ggez::event::{self, EventHandler, EventLoop};
 
 use self::game::Game;
 
@@ -102,7 +104,28 @@ impl EventHandler for Game {
     }
 }
 
-pub fn run(window_scale: f32) {
+pub fn run(window_scale: f32, play_against_computer: bool) {
+    let (mut gtx, event_loop) = create_new_game(window_scale);
+    let game = Game::new(&mut gtx, window_scale, play_against_computer);
+
+    event::run(gtx, event_loop, game);
+}
+
+pub fn load(path: String, window_scale: f32, play_against_computer: bool) {
+    let (mut gtx, event_loop) = create_new_game(window_scale);
+
+    match snapshot::load_game(path, &mut gtx, window_scale, play_against_computer)
+    {
+        Ok(game) => event::run(gtx, event_loop, game),
+        Err(err) => {
+            println!("{}", err.message);
+            let game = Game::new(&mut gtx, window_scale, play_against_computer);
+            event::run(gtx, event_loop, game);
+        }
+    }
+}
+
+fn create_new_game(window_scale: f32) -> (ggez::Context, EventLoop<()>) {
     let window_mode = WindowMode {
         width: 1280.0*window_scale,
         height: 1280.0*window_scale,
@@ -115,7 +138,7 @@ pub fn run(window_scale: f32) {
         ..Default::default()
     };
 
-    let (mut gtx, event_loop) = ContextBuilder::new("Mühle Agent", "Max Warkentin")
+    let (gtx, event_loop) = ContextBuilder::new("Mühle Agent", "Max Warkentin")
         .add_resource_path("assets")
         .window_mode(window_mode)
         .window_setup(window_setup)
@@ -123,10 +146,5 @@ pub fn run(window_scale: f32) {
         .expect("Could not create ggez context!");
 
 
-    let game = Game::new(&mut gtx, window_scale);
-
-    // Uncomment for debugging:
-    // let game = Game::new(&mut gtx, window_scale).game.set_testing_board();
-
-    event::run(gtx, event_loop, game);
+    return (gtx, event_loop);
 }

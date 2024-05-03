@@ -17,6 +17,21 @@ impl FieldError {
     }
 }
 
+#[derive(Debug)]
+pub struct LoadGameError {
+    pub message: String,
+}
+impl LoadGameError {
+    pub fn new(message: String) -> LoadGameError {
+        LoadGameError {
+            message
+        }
+    }
+    pub fn empty() -> LoadGameError {
+        LoadGameError { message: "".to_string() }
+    }
+}
+
 #[derive(Clone)]
 pub struct CarryPiece {
     pub x: usize,
@@ -52,6 +67,16 @@ impl Piece {
             "None"
         }.to_string()
     }
+    
+    pub fn parse(string: String) -> Piece {
+        if string == "White" {
+            Piece::White
+        } else if string =="Black" {
+            Piece::Black
+        } else{
+            Piece::None
+        }
+    }
 
     /// Converts:
     ///  - White <-> Black
@@ -75,4 +100,24 @@ pub enum State {
     Take,
     End,
     Win
+}
+impl State {
+    pub fn to_str(self) -> String {
+        match self {
+            State::Setup => "Setup",
+            State::Take => "Take",
+            State::End => "End",
+            State::Win => "Win",
+            _ => "Normal",
+        }.to_string()
+    }
+    pub fn parse(string: &str) -> State {
+        match string {
+            "Setup" => State::Setup,
+            "Take" => State::Take,
+            "End" => State::End,
+            "Win" => State::Win,
+            _ => State::Normal
+        }
+    }
 }

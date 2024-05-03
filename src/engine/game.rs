@@ -1,8 +1,8 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use ggez::{graphics::Image, Context};
 
-use super::{enums::{CarryPiece, FieldError, Piece, State}, logic};
+use super::{enums::{CarryPiece, Piece, State}, logic};
 
 
 pub struct Game {
@@ -22,11 +22,12 @@ pub struct Game {
     
     pub images: HashMap<String, Image>,
     pub window_scale: f32,
+    pub play_against_computer: bool
 }
 
 
 impl Game {
-    pub fn new(_gtx: &mut Context, window_scale: f32) -> Game {
+    pub fn new(_gtx: &mut Context, window_scale: f32, play_against_computer: bool) -> Game {
 
         let background_image: Image = Image::from_path(_gtx, "/muehle_board.png").unwrap();
         let piece_white_image: Image = Image::from_path(_gtx, "/muehle_white_piece.png").unwrap();
@@ -57,8 +58,9 @@ impl Game {
                 ("empty black outlined".to_string(), empty_black_outlined_image),
                 ("outline".to_string(), empty_outlined_image),
             ]),
-            window_scale: window_scale,
+            window_scale,
             carry_piece: Option::None,
+            play_against_computer
         }
     }
     
@@ -106,6 +108,14 @@ impl Game {
         self.board[x][ring]
     }
 
+    pub fn set_setup_pieces_left(&mut self, amount: u8) {
+        self.setup_pieces_left = amount;
+    }
+
+    pub fn get_setup_pieces_left(&mut self) -> u8 {
+        self.setup_pieces_left
+    }
+
     pub fn get_carry_piece(&mut self) -> Option<CarryPiece> {
         self.carry_piece.clone()
     }
@@ -135,51 +145,6 @@ impl Game {
             self.board[x][ring] = piece_color;
             self.set_carry_piece(Option::None);
         }
-    }
-
-    /// Calculates which field is being clicked by having formed a rectangle around each position
-    /// 
-    /// A Hashset is being created and will keep (through set intersection) possible values for x and ring.
-    /// If the Hashset is inconclusive or empty, the click is not on any field.
-    /// See more on coordinates-datastructure-connection.jpg
-    pub fn get_board_indices(&mut self, x:f32, y:f32) -> Result<(usize, usize), FieldError>{
-        let accuracy: f32 = 65.0;
-
-        let mut remaining_x: HashSet<i32> = HashSet::from([0,1,2,3,4,5,6,7]);
-        let mut remaining_ring: HashSet<i32> = HashSet::from([0,1,2]);
-
-        for (index, spot) in [165.0, 325.0, 485.0, 635.0, 785.0, 945.0, 1105.0].iter().enumerate() {
-            let min_border: f32 = (spot - accuracy)*self.window_scale;
-            let max_border: f32 = (spot + accuracy)*self.window_scale;
-
-            if x > min_border && x < max_border {
-                if index < 3 {
-                    remaining_x = remaining_x.intersection(&HashSet::from([0,6,7])).cloned().collect();
-                    remaining_ring = remaining_ring.intersection(&HashSet::from([index as i32])).cloned().collect();
-                } else if index == 3 {
-                    remaining_x = remaining_x.intersection(&HashSet::from([1,5])).cloned().collect();
-                } else {
-                    remaining_x = remaining_x.intersection(&HashSet::from([2,3,4])).cloned().collect();
-                    remaining_ring = remaining_ring.intersection(&HashSet::from([6 - (index as i32)])).cloned().collect();
-                }
-            }
-            if y > min_border && y < max_border {
-                if index < 3 {
-                    remaining_x = remaining_x.intersection(&HashSet::from([0,1,2])).cloned().collect();
-                    remaining_ring = remaining_ring.intersection(&HashSet::from([index as i32])).cloned().collect();
-                } else if index == 3 {
-                    remaining_x = remaining_x.intersection(&HashSet::from([3,7])).cloned().collect();
-                } else {
-                    remaining_x = remaining_x.intersection(&HashSet::from([4,5,6])).cloned().collect();
-                    remaining_ring = remaining_ring.intersection(&HashSet::from([6 - (index as i32)])).cloned().collect();
-                }
-            }
-        }
-
-        if remaining_x.len() != 1 || remaining_ring.len() != 1 {
-            return Err(FieldError::new(format!("Invalid position: {}.x {}.y", x, y)));
-        }
-        return Ok((*remaining_x.iter().next().unwrap() as usize, *remaining_ring.iter().next().unwrap() as usize));
     }
 
     fn update_piece_count(&mut self) {
@@ -241,5 +206,10 @@ impl Game {
         println!("{} can place {} more pieces and {} can place {} more pieces",
             Piece::White.to_str(), current_player_count,
             Piece::Black.to_str(), next_player_count);
+    }
+
+    pub fn refresh(&mut self) {
+        self.update_piece_count();
+        self.update_state(Option::None);
     }
 }

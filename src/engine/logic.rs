@@ -1,4 +1,8 @@
-use super::{enums::{CarryPiece, FieldError, Piece, State}, game::Game};
+use std::collections::HashSet;
+
+use crate::ai;
+
+use super::{enums::{CarryPiece, FieldError, Piece, State}, game::Game, snapshot};
 
 fn move_piece(player_color: Piece, move_from: (usize, usize), move_to: (usize, usize), mut board: [[Piece; 3]; 8]) -> (bool, [[Piece; 3]; 8]) {
     if board[move_to.0][move_to.1] != Piece::None { // desired spot is not empty
@@ -100,19 +104,68 @@ fn is_creating_mill(player_color: Piece, position: (usize, usize), board: [[Piec
     return false;
 }
 
+
+/// Calculates which field is being clicked by having formed a rectangle around each position
+/// 
+/// A Hashset is being created and will keep (through set intersection) possible values for x and ring.
+/// If the Hashset is inconclusive or empty, the click is not on any field.
+/// See more on coordinates-datastructure-connection.jpg
+pub fn get_board_indices(game: &mut Game, x:f32, y:f32) -> Result<(usize, usize), FieldError>{
+    let accuracy: f32 = 65.0;
+
+    let mut remaining_x: HashSet<i32> = HashSet::from([0,1,2,3,4,5,6,7]);
+    let mut remaining_ring: HashSet<i32> = HashSet::from([0,1,2]);
+
+    for (index, spot) in [165.0, 325.0, 485.0, 635.0, 785.0, 945.0, 1105.0].iter().enumerate() {
+        let min_border: f32 = (spot - accuracy)*game.window_scale;
+        let max_border: f32 = (spot + accuracy)*game.window_scale;
+
+        if x > min_border && x < max_border {
+            if index < 3 {
+                remaining_x = remaining_x.intersection(&HashSet::from([0,6,7])).cloned().collect();
+                remaining_ring = remaining_ring.intersection(&HashSet::from([index as i32])).cloned().collect();
+            } else if index == 3 {
+                remaining_x = remaining_x.intersection(&HashSet::from([1,5])).cloned().collect();
+            } else {
+                remaining_x = remaining_x.intersection(&HashSet::from([2,3,4])).cloned().collect();
+                remaining_ring = remaining_ring.intersection(&HashSet::from([6 - (index as i32)])).cloned().collect();
+            }
+        }
+        if y > min_border && y < max_border {
+            if index < 3 {
+                remaining_x = remaining_x.intersection(&HashSet::from([0,1,2])).cloned().collect();
+                remaining_ring = remaining_ring.intersection(&HashSet::from([index as i32])).cloned().collect();
+            } else if index == 3 {
+                remaining_x = remaining_x.intersection(&HashSet::from([3,7])).cloned().collect();
+            } else {
+                remaining_x = remaining_x.intersection(&HashSet::from([4,5,6])).cloned().collect();
+                remaining_ring = remaining_ring.intersection(&HashSet::from([6 - (index as i32)])).cloned().collect();
+            }
+        }
+    }
+
+    if remaining_x.len() != 1 || remaining_ring.len() != 1 {
+        return Err(FieldError::new(format!("Invalid position: {}.x {}.y", x, y)));
+    }
+    return Ok((*remaining_x.iter().next().unwrap() as usize, *remaining_ring.iter().next().unwrap() as usize));
+}
+
 /// Does all the computation that is needed for moving pieces around and changing game states
 pub fn compute_step(mouse_button_down: bool, x: f32, y: f32, game: &mut Game) -> Result<(), FieldError> {
-    let (board_x, board_ring) =
-        match game.get_board_indices(x, y) {
-            Ok((board_x, board_ring)) => (board_x, board_ring),
-            Err(e) => {
-                game.undo_carry();
-                return Err(e)
+    let (board_x, board_ring) = 
+        if game.get_player_turn() == Piece::White || !game.play_against_computer { // TODO add ability to play black as player
+            match get_board_indices(game, x, y) {
+                Ok((board_x, board_ring)) => (board_x, board_ring),
+                Err(e) => {
+                    game.undo_carry();
+                    return Err(e)
+                }
             }
+        } else {
+            ai::compute_step()
         };
     let piece_color: Piece = game.get_piece_color(board_x, board_ring);
-
-
+        
     if mouse_button_down {
         compute_button_down(board_x, board_ring, piece_color, game)
     } else {
@@ -165,7 +218,7 @@ fn compute_button_up(board_x: usize, board_ring: usize, piece_color: Piece, carr
                     game.set_board(new_board);
                     game.set_carry_piece(Option::None);
                     
-                    if is_creating_mill(carry_piece_color, (board_x, board_ring), game.get_board()) {
+                    if is_creating_mill(carry_piece_color, (board_x, board_ring), new_board) {
                         game.update_state(Option::Some(State::Take));
                         println!("{} has created a mill", carry_piece_color.to_str());
                     } else {
@@ -197,6 +250,7 @@ fn compute_button_up(board_x: usize, board_ring: usize, piece_color: Piece, carr
         }, State::Win => { }
     }
     game.undo_carry();
+    snapshot::save_game(game);
     Ok(())
 }
 

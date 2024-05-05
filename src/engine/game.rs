@@ -22,12 +22,13 @@ pub struct Game {
     
     pub images: HashMap<String, Image>,
     pub window_scale: f32,
-    pub play_against_computer: bool
+    pub play_against_computer: bool,
+    computer_color: Piece
 }
 
 
 impl Game {
-    pub fn new(_gtx: &mut Context, window_scale: f32, play_against_computer: bool) -> Game {
+    pub fn new(_gtx: &mut Context, window_scale: f32, play_against_computer: bool, computer_color: String) -> Game {
 
         let background_image: Image = Image::from_path(_gtx, "/muehle_board.png").unwrap();
         let piece_white_image: Image = Image::from_path(_gtx, "/muehle_white_piece.png").unwrap();
@@ -60,7 +61,8 @@ impl Game {
             ]),
             window_scale,
             carry_piece: Option::None,
-            play_against_computer
+            play_against_computer,
+            computer_color: Piece::parse(computer_color)
         }
     }
     
@@ -106,6 +108,10 @@ impl Game {
 
     pub fn get_piece_color(&mut self, x:usize, ring:usize) -> Piece {
         self.board[x][ring]
+    }
+
+    pub fn get_computer_color(&mut self) -> Piece {
+        Piece::from(self.computer_color)
     }
 
     pub fn set_setup_pieces_left(&mut self, amount: u8) {

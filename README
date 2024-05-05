@@ -1,6 +1,10 @@
-Dies ist die Abgabe vom 27-04-2024
+Dies ist die Abgabe vom 05-05-2024
 
 **Informationen zum Code:**
-Wo gewisse code abschnitte zu finden sind, sollte selbsterklärend sein.
-Bei der UI wird darg-and-drop simuliert.
-Für die Umwandlung von Koordinaten zu indices und anders herum kann der Rechenweg besser über coordinates-datastructure-connection.jpg nachvollzogen werden.
+Hinzugefügt wurde für diese Abgabe engine/snapshot.rs welches nun fähig ist einen Spielstand zu speichern und auch zu laden.
+Dadurch kann auch die künftige KI auf diese Speicherstände zugreifen und unabhängig von der Game engine einen Zug berechnen.
+Versucht habe ich so gut wie möglich die KI von der engine fernzuhalten, sodass auch modular andere KI's ausprobiert werden können, was im Verlaufe der Entwicklung verbessert wird.
+
+Ein Test wurde in ai/mod.rs erstellt welcher grob die vorgegebenen Files zum testen verwendet, dies in meine Datenstruktur umwandelt und schließlich mit den erwarteten Werten vergleicht.
+
+"Schaltet" man die KI im main.rs an, so wird sie einfach einen Zufälligen move ausführen.

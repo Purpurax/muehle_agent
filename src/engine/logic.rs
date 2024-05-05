@@ -64,12 +64,12 @@ pub fn can_take_piece(piece_color: Piece, (board_x, board_ring): (usize, usize),
     !is_piece_part_of_mill(piece_color, (board_x, board_ring), board) || all_pieces_are_in_mills(piece_color, board)
 }
 
-fn is_piece_part_of_mill(piece_color: Piece, (board_x, board_ring): (usize, usize), board: [[Piece; 3]; 8]) -> bool {
+pub fn is_piece_part_of_mill(piece_color: Piece, (board_x, board_ring): (usize, usize), board: [[Piece; 3]; 8]) -> bool {
     is_creating_mill(piece_color, (board_x, board_ring), board)
 }
 
 
-fn all_pieces_are_in_mills(piece_color: Piece, board: [[Piece; 3]; 8]) -> bool {
+pub fn all_pieces_are_in_mills(piece_color: Piece, board: [[Piece; 3]; 8]) -> bool {
     for (x, diagonal_row) in board.iter().enumerate() {
         for (ring, piece) in diagonal_row.iter().enumerate() {
             if *piece == piece_color && !is_piece_part_of_mill(piece_color, (x, ring), board) {
@@ -80,7 +80,7 @@ fn all_pieces_are_in_mills(piece_color: Piece, board: [[Piece; 3]; 8]) -> bool {
     return true;
 }
 
-fn is_creating_mill(player_color: Piece, position: (usize, usize), board: [[Piece; 3]; 8]) -> bool {
+pub fn is_creating_mill(player_color: Piece, position: (usize, usize), board: [[Piece; 3]; 8]) -> bool {
     let pos_x: i8 = position.0 as i8;
     let pos_ring: i8 = position.1 as i8;
 
@@ -152,32 +152,43 @@ pub fn get_board_indices(game: &mut Game, x:f32, y:f32) -> Result<(usize, usize)
 
 /// Does all the computation that is needed for moving pieces around and changing game states
 pub fn compute_step(mouse_button_down: bool, x: f32, y: f32, game: &mut Game) -> Result<(), FieldError> {
-    let (board_x, board_ring) = 
-        if game.get_player_turn() == Piece::White || !game.play_against_computer { // TODO add ability to play black as player
-            match get_board_indices(game, x, y) {
-                Ok((board_x, board_ring)) => (board_x, board_ring),
-                Err(e) => {
-                    game.undo_carry();
-                    return Err(e)
-                }
+    if !game.play_against_computer || !(game.get_player_turn() == game.get_computer_color()) {
+        let (board_x, board_ring) = 
+        match get_board_indices(game, x, y) {
+            Ok((board_x, board_ring)) => (board_x, board_ring),
+            Err(e) => {
+                game.undo_carry();
+                return Err(e)
             }
-        } else {
-            ai::compute_step()
         };
-    let piece_color: Piece = game.get_piece_color(board_x, board_ring);
+        let piece_color: Piece = game.get_piece_color(board_x, board_ring);
         
-    if mouse_button_down {
-        compute_button_down(board_x, board_ring, piece_color, game)
+        if mouse_button_down {
+            compute_button_down(board_x, board_ring, piece_color, game)
+        } else {
+            let carry_piece = game.get_carry_piece();
+            let state = game.get_state();
+            
+            if carry_piece.is_none() && (state == State::Normal || state == State::End) {
+                game.undo_carry();
+                return Err(FieldError::empty());
+            }
+            
+            compute_button_up(board_x, board_ring, piece_color, carry_piece, state, game)
+        }
     } else {
+        let (from_x, from_ring, to_x, to_ring) = ai::compute_step();
+        let piece_color_from = game.get_piece_color(from_x, from_ring);
+        let piece_color_to = game.get_piece_color(to_x, to_ring);
+        
+        if compute_button_down(from_x, from_ring, piece_color_from, game).is_err() {
+            return Err(FieldError::new("The move is invalid".to_string()));
+        };
+        
         let carry_piece = game.get_carry_piece();
         let state = game.get_state();
 
-        if carry_piece.is_none() && (state == State::Normal || state == State::End) {
-            game.undo_carry();
-            return Err(FieldError::empty());
-        }
-
-        compute_button_up(board_x, board_ring, piece_color, carry_piece, state, game)
+        compute_button_up(to_x, to_ring, piece_color_to, carry_piece, state, game)
     }
 }
 

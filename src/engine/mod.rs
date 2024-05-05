@@ -6,7 +6,6 @@ pub mod snapshot;
 
 use ggez::conf::{FullscreenType, WindowMode, WindowSetup};
 use ggez::mint::Vector2;
-use ggez::winit::window;
 use ggez::{Context, ContextBuilder, GameError, GameResult};
 use ggez::graphics::{self, Canvas, Color, DrawParam, Rect};
 use ggez::event::{self, EventHandler, EventLoop};
@@ -16,6 +15,13 @@ use self::game::Game;
 
 impl EventHandler for Game {
     fn update(&mut self, _gtx: &mut Context) -> GameResult {
+        if self.play_against_computer && self.get_player_turn() == self.get_computer_color() {
+            match logic::compute_step(true, 0.0, 0.0, self) {
+                Ok(()) => {},
+                Err(_) => println!("Invalid move from computer")
+            };
+        }
+
         Ok(())
     }
     
@@ -104,22 +110,22 @@ impl EventHandler for Game {
     }
 }
 
-pub fn run(window_scale: f32, play_against_computer: bool) {
+pub fn run(window_scale: f32, play_against_computer: bool, computer_color: String) {
     let (mut gtx, event_loop) = create_new_game(window_scale);
-    let game = Game::new(&mut gtx, window_scale, play_against_computer);
+    let game = Game::new(&mut gtx, window_scale, play_against_computer, computer_color);
 
     event::run(gtx, event_loop, game);
 }
 
-pub fn load(path: String, window_scale: f32, play_against_computer: bool) {
+pub fn load(path: String, window_scale: f32, play_against_computer: bool, computer_color: String) {
     let (mut gtx, event_loop) = create_new_game(window_scale);
 
-    match snapshot::load_game(path, &mut gtx, window_scale, play_against_computer)
+    match snapshot::load_game(path, &mut gtx, window_scale, play_against_computer, computer_color.clone())
     {
         Ok(game) => event::run(gtx, event_loop, game),
         Err(err) => {
             println!("{}", err.message);
-            let game = Game::new(&mut gtx, window_scale, play_against_computer);
+            let game = Game::new(&mut gtx, window_scale, play_against_computer, computer_color);
             event::run(gtx, event_loop, game);
         }
     }

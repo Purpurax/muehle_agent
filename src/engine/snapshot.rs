@@ -8,7 +8,7 @@ use super::{enums::{LoadGameError, Piece}, game::Game};
 
 
 
-pub fn load_game(path: String, gtx: &mut Context, window_scale: f32, play_against_computer: bool) -> Result<Game, LoadGameError> {
+pub fn load_game(path: String, gtx: &mut Context, window_scale: f32, play_against_computer: bool, computer_color: String) -> Result<Game, LoadGameError> {
     let mut string: String = String::new();
     {
         let file = File::open(path);
@@ -20,7 +20,7 @@ pub fn load_game(path: String, gtx: &mut Context, window_scale: f32, play_agains
         }
     }
 
-    let mut game: Game = Game::new(gtx, window_scale, play_against_computer);
+    let mut game: Game = Game::new(gtx, window_scale, play_against_computer, computer_color);
     let elements: Vec<&str> = string
         .split("\n")
         .map(|s| s.split(" ").collect::<Vec<&str>>())

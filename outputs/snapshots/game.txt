@@ -1,4 +1,4 @@
-board: BEEBWEBEBWBWBWWWBBBEWWEE
-player_turn: Black
+board: EEEBEEWWEBBWWWWBBWWBBBWB
+player_turn: White
 state: Normal
 setup_pieces_left: 0

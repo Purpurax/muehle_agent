@@ -7,10 +7,11 @@ fn main() {
 
     // Windows size is 1280px on scale = 1
     let window_scale:f32 = 0.7;
-    let play_against_computer = true;
+    let play_against_computer = false;
     let computer_color: &str = "Black";
     // Leave empty to start new game
-    let load_game_abs_path: &str = "C://1//PROJECTS//Rust//muehle_agent//outputs//snapshots//game.txt";
+    let load_game_abs_path: &str = "../outputs/snapshots/game.txt";
+    // let load_game_abs_path: &str = "";
 
 
 

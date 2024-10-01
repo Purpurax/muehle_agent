@@ -84,7 +84,7 @@ fn calculate_image_for_normal(player_color: Piece, field_color: Piece, field_pos
                 Piece::White => images["white"].clone(),
                 Piece::Black => images["black"].clone(),
                 Piece::None => {
-                    let (carry_x, carry_ring, _piece_color, _carry_image) = carry_piece.unwrap().into();
+                    let (carry_x, carry_ring, _piece_color) = carry_piece.unwrap().into();
                     if logic::is_neighbor((carry_x, carry_ring), field_position) {
                         images["outline"].clone()
                     } else {
@@ -137,7 +137,7 @@ fn calculate_image_for_end(player_color: Piece, field_color: Piece, field_positi
                 Piece::White => images["white"].clone(),
                 Piece::Black => images["black"].clone(),
                 Piece::None => {
-                    let (carry_x, carry_ring, _piece_color, _carry_image) = carry_piece.unwrap().into();
+                    let (carry_x, carry_ring, _piece_color) = carry_piece.unwrap().into();
                     if (piece_count == 3 && (carry_x, carry_ring) != field_position) || logic::is_neighbor((carry_x, carry_ring), field_position) {
                             images["outline"].clone()
                     } else {

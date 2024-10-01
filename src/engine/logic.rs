@@ -1,7 +1,5 @@
 use std::collections::HashSet;
 
-use crate::ai;
-
 use super::{enums::{CarryPiece, FieldError, Piece, State}, game::Game, snapshot};
 
 fn move_piece(player_color: Piece, move_from: (usize, usize), move_to: (usize, usize), mut board: [[Piece; 3]; 8]) -> (bool, [[Piece; 3]; 8]) {
@@ -110,15 +108,15 @@ pub fn is_creating_mill(player_color: Piece, position: (usize, usize), board: [[
 /// A Hashset is being created and will keep (through set intersection) possible values for x and ring.
 /// If the Hashset is inconclusive or empty, the click is not on any field.
 /// See more on coordinates-datastructure-connection.jpg
-pub fn get_board_indices(game: &mut Game, x:f32, y:f32) -> Result<(usize, usize), FieldError>{
+pub fn get_board_indices(x:f32, y:f32, window_scale:f32) -> Result<(usize, usize), FieldError>{
     let accuracy: f32 = 65.0;
 
     let mut remaining_x: HashSet<i32> = HashSet::from([0,1,2,3,4,5,6,7]);
     let mut remaining_ring: HashSet<i32> = HashSet::from([0,1,2]);
 
     for (index, spot) in [165.0, 325.0, 485.0, 635.0, 785.0, 945.0, 1105.0].iter().enumerate() {
-        let min_border: f32 = (spot - accuracy)*game.window_scale;
-        let max_border: f32 = (spot + accuracy)*game.window_scale;
+        let min_border: f32 = (spot - accuracy)*window_scale;
+        let max_border: f32 = (spot + accuracy)*window_scale;
 
         if x > min_border && x < max_border {
             if index < 3 {
@@ -151,45 +149,44 @@ pub fn get_board_indices(game: &mut Game, x:f32, y:f32) -> Result<(usize, usize)
 }
 
 /// Does all the computation that is needed for moving pieces around and changing game states
-pub fn compute_step(mouse_button_down: bool, x: f32, y: f32, game: &mut Game) -> Result<(), FieldError> {
-    if !game.play_against_computer || !(game.get_player_turn() == game.get_computer_color()) {
-        let (board_x, board_ring) = 
-        match get_board_indices(game, x, y) {
-            Ok((board_x, board_ring)) => (board_x, board_ring),
-            Err(e) => {
-                game.undo_carry();
-                return Err(e)
-            }
-        };
-        let piece_color: Piece = game.get_piece_color(board_x, board_ring);
-        
-        if mouse_button_down {
-            compute_button_down(board_x, board_ring, piece_color, game)
-        } else {
-            let carry_piece = game.get_carry_piece();
-            let state = game.get_state();
-            
-            if carry_piece.is_none() && (state == State::Normal || state == State::End) {
-                game.undo_carry();
-                return Err(FieldError::empty());
-            }
-            
-            compute_button_up(board_x, board_ring, piece_color, carry_piece, state, game)
+pub fn compute_step(mouse_button_down: bool, x: f32, y: f32, game: &mut Game, window_scale: f32) -> Result<(), FieldError> {
+    let (board_x, board_ring) = 
+    match get_board_indices(x, y, window_scale) {
+        Ok((board_x, board_ring)) => (board_x, board_ring),
+        Err(e) => {
+            game.undo_carry();
+            return Err(e)
         }
+    };
+    let piece_color: Piece = game.get_piece_color(board_x, board_ring);
+    
+    if mouse_button_down {
+        compute_button_down(board_x, board_ring, piece_color, game)
     } else {
-        let (from_x, from_ring, to_x, to_ring) = ai::compute_step();
-        let piece_color_from = game.get_piece_color(from_x, from_ring);
-        let piece_color_to = game.get_piece_color(to_x, to_ring);
-        
-        if compute_button_down(from_x, from_ring, piece_color_from, game).is_err() {
-            return Err(FieldError::new("The move is invalid".to_string()));
-        };
-        
         let carry_piece = game.get_carry_piece();
         let state = game.get_state();
-
-        compute_button_up(to_x, to_ring, piece_color_to, carry_piece, state, game)
+        
+        if carry_piece.is_none() && (state == State::Normal || state == State::End) {
+            game.undo_carry();
+            return Err(FieldError::empty());
+        }
+        
+        compute_button_up(board_x, board_ring, piece_color, carry_piece, state, game)
     }
+}
+
+pub fn compute_computer_step(from_x: usize, from_ring: usize, to_x: usize, to_ring: usize, game: &mut Game) -> Result<(), FieldError> {
+    let piece_color_from = game.get_piece_color(from_x, from_ring);
+    let piece_color_to = game.get_piece_color(to_x, to_ring);
+    
+    if compute_button_down(from_x, from_ring, piece_color_from, game).is_err() {
+        return Err(FieldError::new("The move is invalid".to_string()));
+    };
+    
+    let carry_piece = game.get_carry_piece();
+    let state = game.get_state();
+
+    compute_button_up(to_x, to_ring, piece_color_to, carry_piece, state, game)
 }
 
 fn compute_button_down(board_x: usize, board_ring: usize, piece_color: Piece, game: &mut Game) -> Result<(), FieldError> {
@@ -223,7 +220,7 @@ fn compute_button_up(board_x: usize, board_ring: usize, piece_color: Piece, carr
             }
         }, State::Normal => {
             if carry_piece.is_some() {
-                let (carry_x, carry_ring, carry_piece_color, _carry_image) = carry_piece.unwrap().into();
+                let (carry_x, carry_ring, carry_piece_color) = carry_piece.unwrap().into();
                 let (successful, new_board) = move_piece(carry_piece_color, (carry_x, carry_ring), (board_x, board_ring), game.get_board());
                 if successful {
                     game.set_board(new_board);
@@ -244,7 +241,7 @@ fn compute_button_up(board_x: usize, board_ring: usize, piece_color: Piece, carr
                 game.update_state(Option::Some(State::Normal));
             }
         }, State::End => {
-            let (carry_x, carry_ring, carry_piece_color, _image) = carry_piece.unwrap().into();
+            let (carry_x, carry_ring, carry_piece_color) = carry_piece.unwrap().into();
             let (successful, new_board) = move_piece(carry_piece_color, (carry_x, carry_ring), (board_x, board_ring), game.get_board());
             let count = game.get_piece_count(carry_piece_color);
             if (count == 3 && (board_x != carry_x || board_ring != carry_ring) && piece_color == Piece::None) || successful {
@@ -261,7 +258,7 @@ fn compute_button_up(board_x: usize, board_ring: usize, piece_color: Piece, carr
         }, State::Win => { }
     }
     game.undo_carry();
-    snapshot::save_game(game);
+    // snapshot::save_game(game);
     Ok(())
 }
 

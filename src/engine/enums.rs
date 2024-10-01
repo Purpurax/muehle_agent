@@ -1,7 +1,3 @@
-use ggez::graphics::Image;
-
-
-
 #[derive(Debug)]
 pub struct FieldError {
     pub message: String,
@@ -36,17 +32,16 @@ impl LoadGameError {
 pub struct CarryPiece {
     pub x: usize,
     pub ring: usize,
-    pub color: Piece,
-    pub image: Image
+    pub color: Piece
 }
 impl CarryPiece {
-    pub fn new(x: usize, ring: usize, color: Piece, image: Image) -> CarryPiece {
-        CarryPiece {x, ring, color, image}
+    pub fn new(x: usize, ring: usize, color: Piece) -> CarryPiece {
+        CarryPiece {x, ring, color}
     }
 }
-impl Into<(usize, usize, Piece, Image)> for CarryPiece {
-    fn into(self) -> (usize, usize, Piece, Image) {
-        (self.x, self.ring, self.color, self.image)
+impl Into<(usize, usize, Piece)> for CarryPiece {
+    fn into(self) -> (usize, usize, Piece) {
+        (self.x, self.ring, self.color)
     }
 }
 

@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use ggez::{graphics::Image, Context};
-
 use super::{enums::{CarryPiece, Piece, State}, logic};
 
 
@@ -15,59 +13,26 @@ pub struct Game {
     player_turn: Piece,
     carry_piece: Option<CarryPiece>,
     
-    // Amount of stones left to be placed by both players
     state: State,
     setup_pieces_left: u8,
     piece_count: HashMap<Piece, u8>,
-    
-    pub images: HashMap<String, Image>,
-    pub window_scale: f32,
-    pub play_against_computer: bool,
-    computer_color: Piece
 }
 
 
 impl Game {
-    pub fn new(_gtx: &mut Context, window_scale: f32, play_against_computer: bool, computer_color: String) -> Game {
-
-        let background_image: Image = Image::from_path(_gtx, "/muehle_board.png").unwrap();
-        let piece_white_image: Image = Image::from_path(_gtx, "/muehle_white_piece.png").unwrap();
-        let piece_white_outlined_image: Image = Image::from_path(_gtx, "/muehle_white_piece_outlined.png").unwrap();
-        let piece_black_image: Image = Image::from_path(_gtx, "/muehle_black_piece.png").unwrap();
-        let piece_black_outlined_image: Image = Image::from_path(_gtx, "/muehle_black_piece_outlined.png").unwrap();
-        let take_white_image: Image = Image::from_path(_gtx, "/muehle_white_piece_take.png").unwrap();
-        let take_black_image: Image = Image::from_path(_gtx, "/muehle_black_piece_take.png").unwrap();
-        let empty_white_outlined_image: Image = Image::from_path(_gtx, "/muehle_no_white_piece_outlined.png").unwrap();
-        let empty_black_outlined_image: Image = Image::from_path(_gtx, "/muehle_no_black_piece_outlined.png").unwrap();
-        let empty_outlined_image: Image = Image::from_path(_gtx, "/muehle_no_piece_outlined.png").unwrap();
-
+    pub fn new() -> Game {
         Game {
             board: [[Piece::None; 3]; 8],
             player_turn: Piece::White,
+            carry_piece: Option::None,
             state: State::Setup,
             setup_pieces_left: 18,
             piece_count: HashMap::from([(Piece::White, 0), (Piece::Black, 0)]),
-            images: HashMap::from([
-                ("background".to_string(), background_image),
-                ("white".to_string(), piece_white_image),
-                ("white outlined".to_string(), piece_white_outlined_image),
-                ("black".to_string(), piece_black_image),
-                ("black outlined".to_string(), piece_black_outlined_image),
-                ("take white".to_string(), take_white_image),
-                ("take black".to_string(), take_black_image),
-                ("empty white outlined".to_string(), empty_white_outlined_image),
-                ("empty black outlined".to_string(), empty_black_outlined_image),
-                ("outline".to_string(), empty_outlined_image),
-            ]),
-            window_scale,
-            carry_piece: Option::None,
-            play_against_computer,
-            computer_color: Piece::parse(computer_color)
         }
     }
     
-    pub fn set_example_board(&mut self) {
-        let new_board = [
+    pub fn new_example_board() -> Game {
+        let board = [
             [Piece::None, Piece::Black, Piece::Black],
             [Piece::None, Piece::None, Piece::Black],
             [Piece::None, Piece::None, Piece::Black],
@@ -77,11 +42,14 @@ impl Game {
             [Piece::None, Piece::None, Piece::None],
             [Piece::None, Piece::None, Piece::None],
         ];
-        self.board = new_board;
-        self.player_turn = Piece::White;
-        self.setup_pieces_left = 0;
-        self.state = State::End;
-        self.update_piece_count();
+        Game {
+            board,
+            player_turn: Piece::White,
+            carry_piece: Option::None,
+            state: State::End,
+            setup_pieces_left: 0,
+            piece_count: HashMap::from([(Piece::White, 3), (Piece::Black, 7)]),
+        }
     }
     
     pub fn get_board(&mut self) -> [[Piece; 3]; 8] {
@@ -102,16 +70,12 @@ impl Game {
         }
     }
 
-    pub fn get_player_turn(&mut self) -> Piece {
-        self.player_turn
-    }
-
     pub fn get_piece_color(&mut self, x:usize, ring:usize) -> Piece {
         self.board[x][ring]
     }
 
-    pub fn get_computer_color(&mut self) -> Piece {
-        Piece::from(self.computer_color)
+    pub fn get_player_turn(&mut self) -> Piece {
+        self.player_turn
     }
 
     pub fn set_setup_pieces_left(&mut self, amount: u8) {
@@ -133,21 +97,12 @@ impl Game {
         }
 
         let (x, ring, piece_color) = params.unwrap();
-        let image: Image;
-        if piece_color == Piece::White {
-            image = self.images["white"].clone();
-        } else if piece_color == Piece::Black {
-            image = self.images["black"].clone();
-        } else {
-            self.carry_piece = Option::None;
-            return
-        }
-        self.carry_piece = Option::Some(CarryPiece::new(x, ring, piece_color, image));
+        self.carry_piece = Option::Some(CarryPiece::new(x, ring, piece_color));
     }
 
     pub fn undo_carry(&mut self) {
         if self.get_carry_piece().is_some() {
-            let (x, ring, piece_color, _image) = self.get_carry_piece().unwrap().into();
+            let (x, ring, piece_color) = self.get_carry_piece().unwrap().into();
             self.board[x][ring] = piece_color;
             self.set_carry_piece(Option::None);
         }

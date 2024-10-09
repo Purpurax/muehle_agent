@@ -2,8 +2,8 @@ use std::time::{Duration, Instant};
 use itertools::Itertools;
 
 use crate::ai::action::forward_step_boards;
-use crate::ai::position::negate_token;
-use crate::ai::utils::{extract_black_move_count_from_board, extract_black_token_count_from_board, extract_white_move_count_from_board, extract_white_token_count_from_board};
+use crate::core::position::negate_token;
+use crate::core::utils::{extract_black_move_count_from_board, extract_black_token_count_from_board, extract_white_move_count_from_board, extract_white_token_count_from_board};
 use crate::ai::{Phase, PhaseEnum};
 
 pub fn minimax(board: u64, depth: usize, mut alpha: isize, mut beta: isize, maximizing_player: u8, phase: Phase, time: Instant) -> Option<isize> {
@@ -11,18 +11,18 @@ pub fn minimax(board: u64, depth: usize, mut alpha: isize, mut beta: isize, maxi
         return None;
     }
     
-    if depth == 0 {
-        return Some(evaluate_action(board, phase));
-    }
-    
     let black_token_count = extract_black_token_count_from_board(board);
     let white_token_count = extract_white_token_count_from_board(board);
     if phase.phase == PhaseEnum::Move {
         if (extract_black_move_count_from_board(board) == 0 && black_token_count > 3) || black_token_count == 2 {
-        return Some(isize::MAX - phase.step_counter as isize)
+            return Some(isize::MAX - phase.step_counter as isize)
         } else if (extract_white_move_count_from_board(board) == 0 && white_token_count > 3) || white_token_count == 2 {
             return Some(isize::MIN + phase.step_counter as isize)
         }
+    }
+    
+    if depth == 0 {
+        return Some(evaluate_action(board, phase));
     }
 
     let forward_step_boards = forward_step_boards(&board, maximizing_player, phase)
@@ -37,7 +37,7 @@ pub fn minimax(board: u64, depth: usize, mut alpha: isize, mut beta: isize, maxi
     });
     
     if maximizing_player == 0b11 {
-        let mut max_eval = isize::MIN;
+        let mut max_eval = isize::MIN + phase.step_counter as isize;
 
         for forward_board in forward_step_boards {
             let eval = minimax(forward_board, depth - 1, alpha, beta, negate_token(maximizing_player), phase.increased(), time);
@@ -53,7 +53,7 @@ pub fn minimax(board: u64, depth: usize, mut alpha: isize, mut beta: isize, maxi
         }
         return Some(max_eval)
     } else {
-        let mut min_eval = isize::MAX;
+        let mut min_eval = isize::MAX - phase.step_counter as isize;
         for forward_board in forward_step_boards {
             let eval = minimax(forward_board, depth - 1, alpha, beta, negate_token(maximizing_player), phase.increased(), time);
             if eval.is_none() {

@@ -1,12 +1,7 @@
-pub mod logic;
-pub mod game;
 pub mod rendering;
-pub mod enums;
 pub mod snapshot;
 
 use std::collections::HashMap;
-use enums::Piece;
-use ggez::winit::event_loop;
 use Option;
 
 use ggez::conf::{FullscreenType, WindowMode, WindowSetup};
@@ -15,17 +10,20 @@ use ggez::{Context, ContextBuilder, GameError, GameResult};
 use ggez::graphics::{self, Canvas, Color, DrawParam, Image, Rect};
 use ggez::event::{self, EventHandler, EventLoop};
 
-use self::game::Game;
+use crate::core::enums::State;
+use crate::core::game::Game;
+use crate::core::logic::{self, calculate_position, compute_button_down, compute_button_up};
 use crate::ai;
 
 pub struct Engine {
-    game: Game,
+    pub game: Game,
 
     computer_white: bool,
     computer_black: bool,
     
     pub images: HashMap<String, Image>,
     pub window_scale: f32,
+    force_draw: bool, // draw before update
     gtx: Option<Context>,
     event_loop: Option<EventLoop<()>>,
 }
@@ -43,6 +41,7 @@ impl Engine {
             computer_black,
             images,
             window_scale,
+            force_draw: false,
             gtx: Option::Some(gtx),
             event_loop: Option::Some(event_loop),
         }
@@ -114,12 +113,24 @@ impl Engine {
 
 impl EventHandler for Engine {
     fn update(&mut self, _gtx: &mut Context) -> GameResult {
-        if (self.computer_white && self.game.get_player_turn() == Piece::White) ||
-            (self.computer_black && self.game.get_player_turn() == Piece::Black) {
-            let (from_x, from_ring, to_x, to_ring) = ai::compute_step(&mut self.game);
-            match logic::compute_computer_step(from_x, from_ring, to_x, to_ring, &mut self.game) {
-                Ok(()) => {},
-                Err(_) => println!("Invalid move from computer")
+        if self.force_draw {
+            self.force_draw = false;
+            return Ok(())
+        }
+        if self.game.get_state() != State::Win &&
+            ((self.computer_white && self.game.get_player_turn() == 0b11) ||
+            (self.computer_black && self.game.get_player_turn() == 0b10)) {
+            match ai::compute_step(&self.game) {
+                Option::Some(action) => 
+                match logic::compute_computer_step(action, &mut self.game) {
+                    Ok(()) => {},
+                    Err(_) => {
+                        println!("Invalid move from computer");
+                        self.game.update_state(Option::None);
+                        self.force_draw = true;
+                    }
+                },
+                Option::None => println!("AI computation lead to no action in update"),
             };
         }
 
@@ -129,7 +140,7 @@ impl EventHandler for Engine {
     fn draw(&mut self, gtx: &mut Context) -> GameResult {
         let mut canvas: Canvas = Canvas::from_frame(gtx, Color::WHITE);
         
-        /* Drawing Background */
+        /* Background */
         canvas.draw(
             &self.images["background"],
             DrawParam::new()
@@ -140,12 +151,10 @@ impl EventHandler for Engine {
         /* Drawing Piece which is Grabbed (optional) */
         if self.game.get_carry_piece().is_some() {
             let image: Image;
-            if self.game.get_carry_piece().unwrap().color == Piece::White {
-                image = self.images["white"].clone();
-            } else if self.game.get_carry_piece().unwrap().color == Piece::Black {
-                image = self.images["black"].clone();
-            } else {
-                panic!("Carry piece has no color");
+            match self.game.get_carry_piece().unwrap().color {
+                0b11 => image = self.images["white"].clone(),
+                0b10 => image = self.images["black"].clone(),
+                _ => panic!("Carry piece has no color"),
             }
             canvas.draw(
                 &image,
@@ -160,24 +169,20 @@ impl EventHandler for Engine {
         }
     
         /* Drawing on each field a piece or a marker */
-        for (x, diagonal_row) in self.game.get_board().iter().enumerate() {
-            for (ring, element) in diagonal_row.iter().enumerate() {
-                let player_color = self.game.get_player_turn();
-
-                let image = rendering::calculate_image(self.game.get_state(), player_color, *element, (x, ring), self.game.get_board(), self.game.get_carry_piece(), self.game.get_piece_count(player_color), self.images.clone());
-                if image.is_none() {
-                    continue
-                }
-
-                let image_position: Rect = rendering::calculate_image_position(x, ring, self.window_scale);
-                
-                canvas.draw(
-                    &image.unwrap(),
-                    graphics::DrawParam::new()
-                        .dest_rect(image_position)
-                        .z(1)
-                );
+        for position in 0..24 {
+            let image = rendering::calculate_image(&self.game, position, self.images.clone());
+            if image.is_none() {
+                continue
             }
+
+            let image_position: Rect = rendering::calculate_image_position(position as u8, self.window_scale);
+            
+            canvas.draw(
+                &image.unwrap(),
+                graphics::DrawParam::new()
+                    .dest_rect(image_position)
+                    .z(1)
+            );
         }
 
         canvas.finish(gtx)
@@ -191,15 +196,24 @@ impl EventHandler for Engine {
             y: f32,
         ) -> Result<(), GameError> {
         
-        if self.computer_white && self.game.get_player_turn() == Piece::White || 
-            self.computer_black && self.game.get_player_turn() == Piece::Black {
+        if self.computer_white && self.game.get_player_turn() == 0b11 || 
+            self.computer_black && self.game.get_player_turn() == 0b10 {
             return Ok(())
         }
 
-        match logic::compute_step(true, x, y, &mut self.game, self.window_scale) {
-            Ok(()) => {},
-            Err(_e) => println!("Invalid move to {}.x {}.y from player {}", x, y, self.game.get_player_turn().to_str())
-        };
+        
+        let position = 
+            match calculate_position(x, y, self.window_scale) {
+                Ok(val) => val,
+                Err(e) => {
+                    self.game.undo_carry();
+                    return Ok(println!("{}", e.message));
+                }
+            };
+        
+        if compute_button_down(position, &mut self.game).is_err() {
+            return Ok(println!("Invalid move to {}.x {}.y from player {}", x, y, self.game.get_player_turn()));
+        }
 
         Ok(())
     }
@@ -212,17 +226,26 @@ impl EventHandler for Engine {
             y: f32,
         ) -> Result<(), GameError> {
 
-        if self.computer_white && self.game.get_player_turn() == Piece::White || 
-            self.computer_black && self.game.get_player_turn() == Piece::Black {
+        if self.computer_white && self.game.get_player_turn() == 0b11 || 
+            self.computer_black && self.game.get_player_turn() == 0b10 {
             return Ok(())
         }
 
-        match logic::compute_step(false, x, y, &mut self.game, self.window_scale) {
-            Ok(()) => {},
-            Err(_e) => println!("Invalid move to {}.x {}.y from player {}", x, y, self.game.get_player_turn().to_str())
-        };
         
-        self.game.update_state(Option::None);
+        let position = 
+            match calculate_position(x, y, self.window_scale) {
+                Ok(val) => val,
+                Err(e) => {
+                    self.game.undo_carry();
+                    return Ok(println!("{}", e.message));
+                }
+            };
+        
+        if compute_button_up(position, &mut self.game).is_err() {
+            return Ok(println!("Invalid move to {}.x {}.y from player {}", x, y, self.game.get_player_turn()));
+        }
+
+        self.force_draw = true;
 
         Ok(())
     }

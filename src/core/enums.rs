@@ -30,62 +30,20 @@ impl LoadGameError {
 
 #[derive(Clone)]
 pub struct CarryPiece {
-    pub x: usize,
-    pub ring: usize,
-    pub color: Piece
+    pub position: usize,
+    pub color: u8
 }
 impl CarryPiece {
-    pub fn new(x: usize, ring: usize, color: Piece) -> CarryPiece {
-        CarryPiece {x, ring, color}
+    pub fn new(position: usize, color: u8) -> CarryPiece {
+        CarryPiece {position, color}
     }
 }
-impl Into<(usize, usize, Piece)> for CarryPiece {
-    fn into(self) -> (usize, usize, Piece) {
-        (self.x, self.ring, self.color)
+impl Into<(usize, u8)> for CarryPiece {
+    fn into(self) -> (usize, u8) {
+        (self.position, self.color)
     }
 }
 
-
-#[derive(Clone, Copy, PartialEq, Debug, Hash, Eq)]
-pub enum Piece {
-    None,
-    White,
-    Black
-}
-impl Piece {
-    pub fn to_str(self) -> String {
-        if self == Piece::White {
-            "White"
-        } else if self == Piece::Black {
-            "Black"
-        } else {
-            "None"
-        }.to_string()
-    }
-    
-    pub fn parse(string: String) -> Piece {
-        if string == "White" {
-            Piece::White
-        } else if string =="Black" {
-            Piece::Black
-        } else{
-            Piece::None
-        }
-    }
-
-    /// Converts:
-    ///  - White <-> Black
-    ///  - None <-> None
-    pub fn neg(self) -> Piece {
-        if self == Piece::White {
-            Piece::Black
-        } else if self == Piece::Black {
-            Piece::White
-        } else {
-            Piece::None
-        }
-    }
-}
 
 
 #[derive(Clone, Copy, PartialEq, Debug)]

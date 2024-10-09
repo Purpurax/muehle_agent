@@ -1,13 +1,14 @@
-pub mod engine;
+pub mod ui;
 pub mod ai;
+pub mod core;
 
-use engine::Engine;
+use ui::Engine;
 
 fn main() {
     // TODO instead of setting
     // Windows size is 1280px on scale = 1
     let window_scale: f32 = 0.7;
-    let computer_white: bool = false;
+    let computer_white: bool = true;
     let computer_black: bool = false;
     let asset_folder: &str = "assets";
 

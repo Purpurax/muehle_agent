@@ -2,16 +2,18 @@ pub mod ui;
 pub mod ai;
 pub mod core;
 
+use good_web_game as ggez;
+use ggez::GameResult;
+use ggez::conf::Conf;
 use ui::Engine;
 
-fn main() {
-    // TODO instead of setting
-    // Windows size is 1280px on scale = 1
-    let window_scale: f32 = 0.7;
-    let computer_white: bool = true;
-    let computer_black: bool = false;
-    let asset_folder: &str = "assets";
+#[allow(dead_code)]
+fn main() -> GameResult {
+    let conf = Conf::default()
+        .cache(Some(include_bytes!("../assets.tar")))
+        .window_resizable(true)
+        .window_title("Mühle KI | Purpurax".to_string());
 
-    let engine: Engine = Engine::new(window_scale, computer_white, computer_black, asset_folder);
-    engine.run();
+    ggez::start(conf, move |context, quad_ctx|
+        Box::new(Engine::new(context, quad_ctx).unwrap()))
 }

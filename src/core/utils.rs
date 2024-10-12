@@ -96,14 +96,14 @@ pub const NEIGHBORS: [[usize; 4]; 24] = [
 
 use crate::ai::action::Action;
 use crate::core::position::{get_token_at, negate_token, BLACK_POSSIBLE_MOVES_FIRST_POSITION, WHITE_POSSIBLE_MOVES_FIRST_POSITION};
-use crate::ai::{Phase, PhaseEnum};
+use crate::ai::{Phase, PhaseType};
 
 #[allow(dead_code)]
 pub fn get_winner(board: u64, phase: Phase) -> u8 {
     let (black_tokens, white_tokens) = (get_number_of_tokens(board, 0b10), get_number_of_tokens(board, 0b11));
-    if phase.phase == PhaseEnum::Move && white_tokens < 3 {
+    if phase.phase == PhaseType::Move && white_tokens < 3 {
         return 0b10
-    } else if phase.phase == PhaseEnum::Move && black_tokens < 3 {
+    } else if phase.phase == PhaseType::Move && black_tokens < 3 {
         return 0b11
     } else {
         return 0b00
@@ -188,28 +188,22 @@ pub fn get_possible_move_count(board: u64, token_type: u8) -> usize {
     return count
 }
 
-// we add white token to board at position "position":
-//  neighbor is empty => add possible move to white
-//  neighbor is white => remove possible move from white
-//  neighbor is black => remove possible move from black
-// 
-// we add white token to board at position "position":
-//  neighbor is empty => add possible move to black
-//  neighbor is white => remove possible move from white
-//  neighbor is black => remove possible move from black
+// When adding a token to the board at "position":
+// - If the neighbor is empty, add a possible move for the token type.
+// - If the neighbor is the same token type, remove a possible move for that token type.
+// - If the neighbor is the opposite token type, remove a possible move for the opposite token type.
 //
-// we remove token at postion "position"
-//  neighbor is empty => remove specific to token type of position
-//  neighbor is white => add possible move from white
-//  neighbor is black => add possible move from black
+// When removing a token from the board at "position":
+// - If the neighbor is empty, remove a possible move for the token type.
+// - If the neighbor is the same token type, add a possible move for that token type.
+// - If the neighbor is the opposite token type, add a possible move for the opposite token type.
 pub fn update_possible_move_count(mut board: u64, token_type: u8, position: usize, remove: bool) -> u64 {
-    // println!("before: {:#066b} >> tt:{}, pos:{}, r:{}", board, token_type, position, remove);
-    if remove {
-        NEIGHBORS[position].iter()
-            .for_each(|neighbor| {
-                if *neighbor == 24 {
-                    return
-                }
+    NEIGHBORS[position].iter()
+        .for_each(|neighbor| {
+            if *neighbor == 24 {
+                return
+            }
+            if remove {
                 match get_token_at(board, *neighbor) {
                     0b00 => if token_type == 0b11 {
                             board -= WHITE_POSSIBLE_MOVES_FIRST_POSITION
@@ -220,13 +214,7 @@ pub fn update_possible_move_count(mut board: u64, token_type: u8, position: usiz
                     0b10 => board += BLACK_POSSIBLE_MOVES_FIRST_POSITION,
                     _ => ()
                 }
-        });
-    } else {
-        NEIGHBORS[position].iter()
-            .for_each(|neighbor| {
-                if *neighbor == 24 {
-                    return
-                }
+            } else {
                 match get_token_at(board, *neighbor) {
                     0b00 => if token_type == 0b11 {
                             board += WHITE_POSSIBLE_MOVES_FIRST_POSITION
@@ -237,9 +225,8 @@ pub fn update_possible_move_count(mut board: u64, token_type: u8, position: usiz
                     0b10 => board -= BLACK_POSSIBLE_MOVES_FIRST_POSITION,
                     _ => ()
                 }
-        });
-    }
-    // println!(" after: {:#066b}", board);
+            }
+    });
     return board
 }
 
@@ -262,16 +249,13 @@ pub fn is_neighbor(position1: usize, position2: usize) -> bool {
 
 pub fn is_part_of_mill(board: u64, position: usize, token_type: u8) -> bool {
     let (index1, index2) = MILL_INDICES_FOR_POSITION[position];
-    let possible_mill_position = POSSIBLE_MILLS_WHITE[index1];
-    let possible_mill_position2 = POSSIBLE_MILLS_WHITE[index2];
+    let possible_mill1 = POSSIBLE_MILLS_WHITE[index1];
+    let possible_mill2 = POSSIBLE_MILLS_WHITE[index2];
+    
     if token_type == 0b11 {
-        (board & possible_mill_position) == POSSIBLE_MILLS_WHITE[index1]
-        || (board & possible_mill_position2) == POSSIBLE_MILLS_WHITE[index2]
-    } else if token_type == 0b10 {
-        (board & possible_mill_position) == POSSIBLE_MILLS_BLACK[index1]
-            || (board & possible_mill_position2) == POSSIBLE_MILLS_BLACK[index2]
+        (board & possible_mill1) == POSSIBLE_MILLS_WHITE[index1] || (board & possible_mill2) == POSSIBLE_MILLS_WHITE[index2]
     } else {
-        false
+        (board & possible_mill1) == POSSIBLE_MILLS_BLACK[index1] || (board & possible_mill2) == POSSIBLE_MILLS_BLACK[index2]
     }
 }
 
@@ -350,268 +334,268 @@ pub fn get_action_from_board(mut board_before: u64, mut board_after: u64, token_
     return Action::new(start_position, end_position, beatable_position)
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use crate::ai::{position::{decode_positions, reverse_token_of_board}, utils::{extract_black_move_count_from_board, extract_black_token_count_from_board, extract_white_move_count_from_board, extract_white_token_count_from_board, get_possible_move_count, insert_number_of_possible_moves_to_board, insert_token_count_to_board, is_mill_closing}};
+#[cfg(test)]
+mod tests {
+    use crate::core::{position::{decode_positions, reverse_token_of_board}, utils::{extract_black_move_count_from_board, extract_black_token_count_from_board, extract_white_move_count_from_board, extract_white_token_count_from_board, get_possible_move_count, insert_number_of_possible_moves_to_board, insert_token_count_to_board, is_mill_closing}};
 
-//     #[test]
-//     fn test_get_winner() {
-//         use crate::ai::utils::get_winner;
-//         use crate::ai::{Phase, PhaseEnum};
-//         let board1 = 0b111100000000000000000000000000000000000000101010;
-//         let board2 =  0b111111101010101111000010001111110000001000100000;
+    #[test]
+    fn test_get_winner() {
+        use crate::core::utils::get_winner;
+        use crate::ai::{Phase, PhaseType};
+        let board1 = 0b111100000000000000000000000000000000000000101010;
+        let board2 =  0b111111101010101111000010001111110000001000100000;
         
-//         assert_eq!(0b10, get_winner(board1, Phase::new(PhaseEnum::Move, 1)));
-//         assert_eq!(0b00, get_winner(board1, Phase::new(PhaseEnum::Set, 3)));
-//         assert_eq!(0b00, get_winner(board2, Phase::new(PhaseEnum::Move, 1)));
-//         assert_eq!(0b10, get_winner(board1, Phase::new(PhaseEnum::Move, 1)));
-//         assert_eq!(0b00, get_winner(board1, Phase::new(PhaseEnum::Set, 3)));
-//         assert_eq!(0b00, get_winner(board2, Phase::new(PhaseEnum::Move, 1)));
-//     }
+        assert_eq!(0b10, get_winner(board1, Phase::new(PhaseType::Move, 1)));
+        assert_eq!(0b00, get_winner(board1, Phase::new(PhaseType::Set, 3)));
+        assert_eq!(0b00, get_winner(board2, Phase::new(PhaseType::Move, 1)));
+        assert_eq!(0b10, get_winner(board1, Phase::new(PhaseType::Move, 1)));
+        assert_eq!(0b00, get_winner(board1, Phase::new(PhaseType::Set, 3)));
+        assert_eq!(0b00, get_winner(board2, Phase::new(PhaseType::Move, 1)));
+    }
 
-//     #[test]
-//     fn test_get_number_of_tokens() {
-//         use crate::ai::utils::get_number_of_tokens;
+    #[test]
+    fn test_get_number_of_tokens() {
+        use crate::core::utils::get_number_of_tokens;
         
-//         let board1 = 0b0;
-//         let board2 = 0b101000000011110011101110110010110011101100100010;
-//         let board3 = 0b000000000011110011101110110010110011101100100010;
-//         let board4 = 0b111100000011110011101110110010110011101100100010;
+        let board1 = 0b0;
+        let board2 = 0b101000000011110011101110110010110011101100100010;
+        let board3 = 0b000000000011110011101110110010110011101100100010;
+        let board4 = 0b111100000011110011101110110010110011101100100010;
 
-//         assert_eq!((0, 0), (get_number_of_tokens(board1, 0b10), get_number_of_tokens(board1, 0b11)));
-//         assert_eq!((8, 8), (get_number_of_tokens(board2, 0b10), get_number_of_tokens(board2, 0b11)));
-//         assert_eq!((6, 8), (get_number_of_tokens(board3, 0b10), get_number_of_tokens(board3, 0b11)));
-//         assert_eq!((6, 10), (get_number_of_tokens(board4, 0b10), get_number_of_tokens(board4, 0b11)));
-//     }
+        assert_eq!((0, 0), (get_number_of_tokens(board1, 0b10), get_number_of_tokens(board1, 0b11)));
+        assert_eq!((8, 8), (get_number_of_tokens(board2, 0b10), get_number_of_tokens(board2, 0b11)));
+        assert_eq!((6, 8), (get_number_of_tokens(board3, 0b10), get_number_of_tokens(board3, 0b11)));
+        assert_eq!((6, 10), (get_number_of_tokens(board4, 0b10), get_number_of_tokens(board4, 0b11)));
+    }
     
-//     #[test]
-//     fn test_insert_token_count_to_board() {
-//         let board1: u64 = 0b0;
-//         let board2: u64 = 0b101000000011110011101110110010110011101100100010;
-//         let board3: u64 = 0b000000000011110011101110110010110011101100100010;
-//         let board4: u64 = 0b000000000000000000000000000010000000000000000000;
+    #[test]
+    fn test_insert_token_count_to_board() {
+        let board1: u64 = 0b0;
+        let board2: u64 = 0b101000000011110011101110110010110011101100100010;
+        let board3: u64 = 0b000000000011110011101110110010110011101100100010;
+        let board4: u64 = 0b000000000000000000000000000010000000000000000000;
         
-//         let exp_board1: u64 = 0b0;
-//         let exp_board2: u64 = 0b0000000000110110101000000011110011101110110010110011101100100010; // 8v8
-//         let exp_board3: u64 = 0b0000000000110100000000000011110011101110110010110011101100100010; // 8v6
-//         let exp_board4: u64 = 0b0000000000000000000000000000000000000000000010000000000000000000; // 0v1
+        let exp_board1: u64 = 0b0;
+        let exp_board2: u64 = 0b0000000000110110101000000011110011101110110010110011101100100010; // 8v8
+        let exp_board3: u64 = 0b0000000000110100000000000011110011101110110010110011101100100010; // 8v6
+        let exp_board4: u64 = 0b0000000000000000000000000000000000000000000010000000000000000000; // 0v1
         
-//         assert_eq!(exp_board1, insert_token_count_to_board(board1));
-//         assert_eq!(exp_board2, insert_token_count_to_board(board2));
-//         assert_eq!(exp_board3, insert_token_count_to_board(board3));
-//         assert_eq!(exp_board4, insert_token_count_to_board(board4));
-//     }
+        assert_eq!(exp_board1, insert_token_count_to_board(board1));
+        assert_eq!(exp_board2, insert_token_count_to_board(board2));
+        assert_eq!(exp_board3, insert_token_count_to_board(board3));
+        assert_eq!(exp_board4, insert_token_count_to_board(board4));
+    }
 
-//     #[test]
-//     fn test_insert_number_of_possible_moves_to_board() {
-//         let board1: u64 = 0b0;
-//         let board2: u64 = 0b101000000011110011101110110010110011101100100010;
-//         let board3: u64 = 0b000000000011110011101110110010110011101100100010;
-//         let board4: u64 = 0b111100000011110011101110110010110011101100100010;
+    #[test]
+    fn test_insert_number_of_possible_moves_to_board() {
+        let board1: u64 = 0b0;
+        let board2: u64 = 0b101000000011110011101110110010110011101100100010;
+        let board3: u64 = 0b000000000011110011101110110010110011101100100010;
+        let board4: u64 = 0b111100000011110011101110110010110011101100100010;
         
-//         let filter_possible_moves_black = 0b0000011111000000000000000000000000000000000000000000000000000000;
-//         let filter_possible_moves_white = 0b1111100000000000000000000000000000000000000000000000000000000000;
+        let filter_possible_moves_black = 0b0000011111000000000000000000000000000000000000000000000000000000;
+        let filter_possible_moves_white = 0b1111100000000000000000000000000000000000000000000000000000000000;
 
-//         let inserted_board1 = insert_number_of_possible_moves_to_board(board1);
-//         let inserted_possible_move_white1 = (inserted_board1 & filter_possible_moves_white) >> 59;
-//         let inserted_possible_move_black1 = (inserted_board1 & filter_possible_moves_black) >> 54;
-//         assert_eq!(get_possible_move_count(board1, 0b11), inserted_possible_move_white1 as usize);
-//         assert_eq!(get_possible_move_count(board1, 0b10), inserted_possible_move_black1 as usize);
+        let inserted_board1 = insert_number_of_possible_moves_to_board(board1);
+        let inserted_possible_move_white1 = (inserted_board1 & filter_possible_moves_white) >> 59;
+        let inserted_possible_move_black1 = (inserted_board1 & filter_possible_moves_black) >> 54;
+        assert_eq!(get_possible_move_count(board1, 0b11), inserted_possible_move_white1 as usize);
+        assert_eq!(get_possible_move_count(board1, 0b10), inserted_possible_move_black1 as usize);
 
-//         let inserted_board2 = insert_number_of_possible_moves_to_board(board2);
-//         let inserted_possible_move_white2 = (inserted_board2 & filter_possible_moves_white) >> 59;
-//         let inserted_possible_move_black2 = (inserted_board2 & filter_possible_moves_black) >> 54;
-//         assert_eq!(get_possible_move_count(board2, 0b11), inserted_possible_move_white2 as usize);
-//         assert_eq!(get_possible_move_count(board2, 0b10), inserted_possible_move_black2 as usize);
+        let inserted_board2 = insert_number_of_possible_moves_to_board(board2);
+        let inserted_possible_move_white2 = (inserted_board2 & filter_possible_moves_white) >> 59;
+        let inserted_possible_move_black2 = (inserted_board2 & filter_possible_moves_black) >> 54;
+        assert_eq!(get_possible_move_count(board2, 0b11), inserted_possible_move_white2 as usize);
+        assert_eq!(get_possible_move_count(board2, 0b10), inserted_possible_move_black2 as usize);
 
-//         let inserted_board3 = insert_number_of_possible_moves_to_board(board3);
-//         let inserted_possible_move_white3 = (inserted_board3 & filter_possible_moves_white) >> 59;
-//         let inserted_possible_move_black3 = (inserted_board3 & filter_possible_moves_black) >> 54;
-//         assert_eq!(get_possible_move_count(board3, 0b11), inserted_possible_move_white3 as usize);
-//         assert_eq!(get_possible_move_count(board3, 0b10), inserted_possible_move_black3 as usize);
+        let inserted_board3 = insert_number_of_possible_moves_to_board(board3);
+        let inserted_possible_move_white3 = (inserted_board3 & filter_possible_moves_white) >> 59;
+        let inserted_possible_move_black3 = (inserted_board3 & filter_possible_moves_black) >> 54;
+        assert_eq!(get_possible_move_count(board3, 0b11), inserted_possible_move_white3 as usize);
+        assert_eq!(get_possible_move_count(board3, 0b10), inserted_possible_move_black3 as usize);
 
-//         let inserted_board4 = insert_number_of_possible_moves_to_board(board4);        
-//         let inserted_possible_move_white4 = (inserted_board4 & filter_possible_moves_white) >> 59;
-//         let inserted_possible_move_black4 = (inserted_board4 & filter_possible_moves_black) >> 54;
-//         assert_eq!(get_possible_move_count(board4, 0b11), inserted_possible_move_white4 as usize);
-//         assert_eq!(get_possible_move_count(board4, 0b10), inserted_possible_move_black4 as usize);
-//     }
+        let inserted_board4 = insert_number_of_possible_moves_to_board(board4);        
+        let inserted_possible_move_white4 = (inserted_board4 & filter_possible_moves_white) >> 59;
+        let inserted_possible_move_black4 = (inserted_board4 & filter_possible_moves_black) >> 54;
+        assert_eq!(get_possible_move_count(board4, 0b11), inserted_possible_move_white4 as usize);
+        assert_eq!(get_possible_move_count(board4, 0b10), inserted_possible_move_black4 as usize);
+    }
 
-//     #[test]
-//     fn test_extract_methods() {
-//         let board1: u64 = 0b101000000011110011101110110010110011101100100010;
-//         let board2: u64 = 0b000000000011110011101110110010110011101100100010;
+    #[test]
+    fn test_extract_methods() {
+        let board1: u64 = 0b101000000011110011101110110010110011101100100010;
+        let board2: u64 = 0b000000000011110011101110110010110011101100100010;
 
-//         let filter_token_black = 0b0000000000000111000000000000000000000000000000000000000000000000;
-//         let filter_token_white = 0b0000000000111000000000000000000000000000000000000000000000000000;
-//         let filter_possible_moves_black = 0b0000011111000000000000000000000000000000000000000000000000000000;
-//         let filter_possible_moves_white = 0b1111100000000000000000000000000000000000000000000000000000000000;
+        let filter_token_black = 0b0000000000000111000000000000000000000000000000000000000000000000;
+        let filter_token_white = 0b0000000000111000000000000000000000000000000000000000000000000000;
+        let filter_possible_moves_black = 0b0000011111000000000000000000000000000000000000000000000000000000;
+        let filter_possible_moves_white = 0b1111100000000000000000000000000000000000000000000000000000000000;
 
-//         let move_and_token_count_board1 = insert_number_of_possible_moves_to_board(insert_number_of_possible_moves_to_board(board1));
-//         let inserted_possible_move_white1 = (move_and_token_count_board1 & filter_possible_moves_white) >> 59;
-//         let inserted_possible_move_black1 = (move_and_token_count_board1 & filter_possible_moves_black) >> 54;
-//         let inserted_token_count_white1 = (move_and_token_count_board1 & filter_token_white) >> 51;
-//         let inserted_token_count_black1 = (move_and_token_count_board1 & filter_token_black) >> 48;
-//         assert_eq!(inserted_possible_move_white1, extract_white_move_count_from_board(move_and_token_count_board1));
-//         assert_eq!(inserted_possible_move_black1, extract_black_move_count_from_board(move_and_token_count_board1));
-//         assert_eq!(inserted_token_count_white1, extract_white_token_count_from_board(move_and_token_count_board1) - 2);
-//         assert_eq!(inserted_token_count_black1, extract_black_token_count_from_board(move_and_token_count_board1) - 2);
+        let move_and_token_count_board1 = insert_number_of_possible_moves_to_board(insert_number_of_possible_moves_to_board(board1));
+        let inserted_possible_move_white1 = (move_and_token_count_board1 & filter_possible_moves_white) >> 59;
+        let inserted_possible_move_black1 = (move_and_token_count_board1 & filter_possible_moves_black) >> 54;
+        let inserted_token_count_white1 = (move_and_token_count_board1 & filter_token_white) >> 51;
+        let inserted_token_count_black1 = (move_and_token_count_board1 & filter_token_black) >> 48;
+        assert_eq!(inserted_possible_move_white1, extract_white_move_count_from_board(move_and_token_count_board1));
+        assert_eq!(inserted_possible_move_black1, extract_black_move_count_from_board(move_and_token_count_board1));
+        assert_eq!(inserted_token_count_white1, extract_white_token_count_from_board(move_and_token_count_board1) - 2);
+        assert_eq!(inserted_token_count_black1, extract_black_token_count_from_board(move_and_token_count_board1) - 2);
 
-//         let move_and_token_count_board2 = insert_number_of_possible_moves_to_board(insert_number_of_possible_moves_to_board(board2));
-//         let inserted_possible_move_white2 = (move_and_token_count_board2 & filter_possible_moves_white) >> 59;
-//         let inserted_possible_move_black2 = (move_and_token_count_board2 & filter_possible_moves_black) >> 54;
-//         let inserted_token_count_white2 = (move_and_token_count_board1 & filter_token_white) >> 51;
-//         let inserted_token_count_black2 = (move_and_token_count_board1 & filter_token_black) >> 48;
-//         assert_eq!(inserted_possible_move_white2, extract_white_move_count_from_board(move_and_token_count_board2));
-//         assert_eq!(inserted_possible_move_black2, extract_black_move_count_from_board(move_and_token_count_board2));
-//         assert_eq!(inserted_token_count_white2, extract_white_token_count_from_board(move_and_token_count_board2) - 2);
-//         assert_eq!(inserted_token_count_black2, extract_black_token_count_from_board(move_and_token_count_board2) - 2);
-//     }
+        let move_and_token_count_board2 = insert_number_of_possible_moves_to_board(insert_number_of_possible_moves_to_board(board2));
+        let inserted_possible_move_white2 = (move_and_token_count_board2 & filter_possible_moves_white) >> 59;
+        let inserted_possible_move_black2 = (move_and_token_count_board2 & filter_possible_moves_black) >> 54;
+        let inserted_token_count_white2 = (move_and_token_count_board1 & filter_token_white) >> 51;
+        let inserted_token_count_black2 = (move_and_token_count_board1 & filter_token_black) >> 48;
+        assert_eq!(inserted_possible_move_white2, extract_white_move_count_from_board(move_and_token_count_board2));
+        assert_eq!(inserted_possible_move_black2, extract_black_move_count_from_board(move_and_token_count_board2));
+        assert_eq!(inserted_token_count_white2, extract_white_token_count_from_board(move_and_token_count_board2) - 2);
+        assert_eq!(inserted_token_count_black2, extract_black_token_count_from_board(move_and_token_count_board2) - 2);
+    }
 
-//     #[test]
-//     fn test_is_move_valid() {
-//         use crate::ai::utils::is_move_valid;
+    #[test]
+    fn test_is_move_valid() {
+        use crate::core::utils::is_move_valid;
 
-//         // move phase
-//         assert_eq!(is_move_valid(7, 6, 0b11, 9), false);
-//         assert_eq!(is_move_valid(7, 0, 0b00, 9), true);
-//         assert_eq!(is_move_valid(8, 16, 0b00, 9), true);
-//         assert_eq!(is_move_valid(9, 1, 0b00, 9), false);
+        // move phase
+        assert_eq!(is_move_valid(7, 6, 0b11, 9), false);
+        assert_eq!(is_move_valid(7, 0, 0b00, 9), true);
+        assert_eq!(is_move_valid(8, 16, 0b00, 9), true);
+        assert_eq!(is_move_valid(9, 1, 0b00, 9), false);
 
-//         // end phase
-//         assert_eq!(is_move_valid(4, 23, 0b00, 3), true);
-//         assert_eq!(is_move_valid(1, 5, 0b00, 3), true);
-//         assert_eq!(is_move_valid(4, 1, 0b11, 3), false);
-//     }
+        // end phase
+        assert_eq!(is_move_valid(4, 23, 0b00, 3), true);
+        assert_eq!(is_move_valid(1, 5, 0b00, 3), true);
+        assert_eq!(is_move_valid(4, 1, 0b11, 3), false);
+    }
 
-//     #[test]
-//     fn test_is_neighbor() {
-//         use crate::ai::utils::is_neighbor;
-//         let now = std::time::Instant::now();
-//         for _ in 0..10000 {
-//             assert_eq!(is_neighbor(0, 1), true);
-//             assert_eq!(is_neighbor(0, 7), true);
-//             assert_eq!(is_neighbor(0, 8), true);
-//             assert_eq!(is_neighbor(10, 2), true);
-//             assert_eq!(is_neighbor(6, 5), true);
-//             assert_eq!(is_neighbor(16, 17), true);
-//             assert_eq!(is_neighbor(22, 14), true);
-//             assert_eq!(is_neighbor(0, 2), false);
-//             assert_eq!(is_neighbor(0, 16), false);
-//             assert_eq!(is_neighbor(1, 9), false);
-//             assert_eq!(is_neighbor(22, 10), false);
-//             assert_eq!(is_neighbor(7, 8), false);
-//             assert_eq!(is_neighbor(23, 17), false);
-//             assert_eq!(is_neighbor(16, 0), false);
-//         }
-//         println!("Time elapsed: {:?}", now.elapsed());
-//     }
+    #[test]
+    fn test_is_neighbor() {
+        use crate::core::utils::is_neighbor;
+        let now = std::time::Instant::now();
+        for _ in 0..10000 {
+            assert_eq!(is_neighbor(0, 1), true);
+            assert_eq!(is_neighbor(0, 7), true);
+            assert_eq!(is_neighbor(0, 8), true);
+            assert_eq!(is_neighbor(10, 2), true);
+            assert_eq!(is_neighbor(6, 5), true);
+            assert_eq!(is_neighbor(16, 17), true);
+            assert_eq!(is_neighbor(22, 14), true);
+            assert_eq!(is_neighbor(0, 2), false);
+            assert_eq!(is_neighbor(0, 16), false);
+            assert_eq!(is_neighbor(1, 9), false);
+            assert_eq!(is_neighbor(22, 10), false);
+            assert_eq!(is_neighbor(7, 8), false);
+            assert_eq!(is_neighbor(23, 17), false);
+            assert_eq!(is_neighbor(16, 0), false);
+        }
+        println!("Time elapsed: {:?}", now.elapsed());
+    }
 
-//     #[test]
-//     fn test_is_part_of_mill() {
-//         use crate::ai::utils::is_part_of_mill;
-//         let board = 0b111111101010101111000010001111110000001000100000;
-//         let now = std::time::Instant::now();
+    #[test]
+    fn test_is_part_of_mill() {
+        use crate::core::utils::is_part_of_mill;
+        let board = 0b111111101010101111000010001111110000001000100000;
+        let now = std::time::Instant::now();
         
-//         for _ in 0..100000 {
-//             assert!(is_part_of_mill(board, 0, 0b11));
-//             assert!(is_part_of_mill(board, 7, 0b11));
-//             assert!(is_part_of_mill(board, 1, 0b11));
-//             assert!(is_part_of_mill(board, 13, 0b11));
-//             assert!(is_part_of_mill(board, 14, 0b11));
-//             assert!(is_part_of_mill(board, 15, 0b11));
+        for _ in 0..100000 {
+            assert!(is_part_of_mill(board, 0, 0b11));
+            assert!(is_part_of_mill(board, 7, 0b11));
+            assert!(is_part_of_mill(board, 1, 0b11));
+            assert!(is_part_of_mill(board, 13, 0b11));
+            assert!(is_part_of_mill(board, 14, 0b11));
+            assert!(is_part_of_mill(board, 15, 0b11));
 
-//             assert!(!is_part_of_mill(board, 2, 0b11));
-//             assert!(!is_part_of_mill(board, 8, 0b11));
-//             assert!(!is_part_of_mill(board, 4, 0b11));
-//             assert!(!is_part_of_mill(board, 5, 0b11));
-//             assert!(!is_part_of_mill(board, 6, 0b11));
-//             assert!(!is_part_of_mill(board, 9, 0b11));
+            assert!(!is_part_of_mill(board, 2, 0b11));
+            assert!(!is_part_of_mill(board, 8, 0b11));
+            assert!(!is_part_of_mill(board, 4, 0b11));
+            assert!(!is_part_of_mill(board, 5, 0b11));
+            assert!(!is_part_of_mill(board, 6, 0b11));
+            assert!(!is_part_of_mill(board, 9, 0b11));
         
-//             assert!(is_part_of_mill(board, 3, 0b10));
-//             assert!(is_part_of_mill(board, 4, 0b10));
-//             assert!(is_part_of_mill(board, 5, 0b10));
+            assert!(is_part_of_mill(board, 3, 0b10));
+            assert!(is_part_of_mill(board, 4, 0b10));
+            assert!(is_part_of_mill(board, 5, 0b10));
 
-//             assert!(!is_part_of_mill(board, 1, 0b10));
-//             assert!(!is_part_of_mill(board, 2, 0b10));
-//         }
-//         println!("Time elapsed: {:?}", now.elapsed());
+            assert!(!is_part_of_mill(board, 1, 0b10));
+            assert!(!is_part_of_mill(board, 2, 0b10));
+        }
+        println!("Time elapsed: {:?}", now.elapsed());
 
-//         assert!(!is_part_of_mill(board, 8, 0b10));
-//         assert!(!is_part_of_mill(board, 9, 0b10));
-//         assert!(!is_part_of_mill(board, 10, 0b10));
-//         assert!(!is_part_of_mill(board, 19, 0b10));
-//         assert!(!is_part_of_mill(board, 21, 0b10));
-//     }
+        assert!(!is_part_of_mill(board, 8, 0b10));
+        assert!(!is_part_of_mill(board, 9, 0b10));
+        assert!(!is_part_of_mill(board, 10, 0b10));
+        assert!(!is_part_of_mill(board, 19, 0b10));
+        assert!(!is_part_of_mill(board, 21, 0b10));
+    }
 
-//     #[test]
-//     fn test_is_closing_mill() {
-//         // normal mill closing
-//         let board_before = decode_positions("EWWEWEEEEEEEEWEEEBBBEEWE".to_string());
-//         let board_after = decode_positions("EWWWEEEEEEEEEWEEEBBBEEWE".to_string());
-//         // zwick mill closing
-//         let board_before2 = decode_positions("EWWWEEEEEWEWWEEEBBBEEWE".to_string());
-//         let board_after2 = decode_positions("EWEWEEEEEWWWWEEEBBBEEWE".to_string());
-//         // normal move
-//         let board_before3 = decode_positions("EWWWEEEEEWEWWEEEBBBEEWE".to_string());
-//         let board_after3 = decode_positions("EWWEWEEEEWEWWEEEBBBEEWE".to_string());
+    #[test]
+    fn test_is_closing_mill() {
+        // normal mill closing
+        let board_before = decode_positions("EWWEWEEEEEEEEWEEEBBBEEWE".to_string());
+        let board_after = decode_positions("EWWWEEEEEEEEEWEEEBBBEEWE".to_string());
+        // zwick mill closing
+        let board_before2 = decode_positions("EWWWEEEEEWEWWEEEBBBEEWE".to_string());
+        let board_after2 = decode_positions("EWEWEEEEEWWWWEEEBBBEEWE".to_string());
+        // normal move
+        let board_before3 = decode_positions("EWWWEEEEEWEWWEEEBBBEEWE".to_string());
+        let board_after3 = decode_positions("EWWEWEEEEWEWWEEEBBBEEWE".to_string());
 
-//         assert!(is_mill_closing(board_before, board_after, 0b11));
-//         assert!(is_mill_closing(board_before2, board_after2, 0b11));
-//         assert!(!is_mill_closing(board_before3, board_after3, 0b11));
-//         assert!(is_mill_closing(reverse_token_of_board(board_before), reverse_token_of_board(board_after), 0b10));
-//         assert!(is_mill_closing(reverse_token_of_board(board_before2), reverse_token_of_board(board_after2), 0b10));
-//         assert!(!is_mill_closing(reverse_token_of_board(board_before3), reverse_token_of_board(board_after3), 0b10));
-//     }
+        assert!(is_mill_closing(board_before, board_after, 0b11));
+        assert!(is_mill_closing(board_before2, board_after2, 0b11));
+        assert!(!is_mill_closing(board_before3, board_after3, 0b11));
+        assert!(is_mill_closing(reverse_token_of_board(board_before), reverse_token_of_board(board_after), 0b10));
+        assert!(is_mill_closing(reverse_token_of_board(board_before2), reverse_token_of_board(board_after2), 0b10));
+        assert!(!is_mill_closing(reverse_token_of_board(board_before3), reverse_token_of_board(board_after3), 0b10));
+    }
 
-//     #[test]
-//     fn test_is_beat_possible() {
-//         use crate::ai::utils::is_beat_possible;
-//         use crate::ai::position::set_token_at;
+    #[test]
+    fn test_is_beat_possible() {
+        use crate::core::utils::is_beat_possible;
+        use crate::core::position::set_token_at;
 
-//         let mut board = 0b111111111010101000000000000000000000000000000000;
+        let mut board = 0b111111111010101000000000000000000000000000000000;
 
-//         let now = std::time::Instant::now();
-//         for _ in 0..1000000 {
-//             assert!(is_beat_possible(board, 0, 0b10));
-//             assert!(!is_beat_possible(board, 1, 0b10));
-//             assert!(!is_beat_possible(board, 2, 0b10));
-//         }
-//         println!("Time elapsed: {:?}", now.elapsed());
+        let now = std::time::Instant::now();
+        for _ in 0..1000000 {
+            assert!(is_beat_possible(board, 0, 0b10));
+            assert!(!is_beat_possible(board, 1, 0b10));
+            assert!(!is_beat_possible(board, 2, 0b10));
+        }
+        println!("Time elapsed: {:?}", now.elapsed());
 
-//         assert!(!is_beat_possible(board, 3, 0b10));
-//         assert!(!is_beat_possible(board, 4, 0b10));
-//         assert!(!is_beat_possible(board, 5, 0b10));
-//         assert!(!is_beat_possible(board, 6, 0b10));
-//         assert!(!is_beat_possible(board, 7, 0b10));
+        assert!(!is_beat_possible(board, 3, 0b10));
+        assert!(!is_beat_possible(board, 4, 0b10));
+        assert!(!is_beat_possible(board, 5, 0b10));
+        assert!(!is_beat_possible(board, 6, 0b10));
+        assert!(!is_beat_possible(board, 7, 0b10));
 
-//         assert!(!is_beat_possible(board, 0, 0b11));
-//         assert!(!is_beat_possible(board, 1, 0b11));
-//         assert!(!is_beat_possible(board, 2, 0b11));
-//         assert!(!is_beat_possible(board, 3, 0b11));
-//         assert!(is_beat_possible(board, 4, 0b11));
-//         assert!(!is_beat_possible(board, 5, 0b11));
-//         assert!(!is_beat_possible(board, 6, 0b11));
-//         assert!(!is_beat_possible(board, 7, 0b11));
+        assert!(!is_beat_possible(board, 0, 0b11));
+        assert!(!is_beat_possible(board, 1, 0b11));
+        assert!(!is_beat_possible(board, 2, 0b11));
+        assert!(!is_beat_possible(board, 3, 0b11));
+        assert!(is_beat_possible(board, 4, 0b11));
+        assert!(!is_beat_possible(board, 5, 0b11));
+        assert!(!is_beat_possible(board, 6, 0b11));
+        assert!(!is_beat_possible(board, 7, 0b11));
 
-//         board = set_token_at(board, 7, 0b11);
+        board = set_token_at(board, 7, 0b11);
 
-//         assert!(is_beat_possible(board, 0, 0b10));
-//         assert!(is_beat_possible(board, 1, 0b10));
-//         assert!(is_beat_possible(board, 2, 0b10));
-//         assert!(is_beat_possible(board, 3, 0b10));
-//         assert!(!is_beat_possible(board, 4, 0b10));
-//         assert!(!is_beat_possible(board, 5, 0b10));
-//         assert!(!is_beat_possible(board, 6, 0b10));
-//         assert!(is_beat_possible(board, 7, 0b10));
+        assert!(is_beat_possible(board, 0, 0b10));
+        assert!(is_beat_possible(board, 1, 0b10));
+        assert!(is_beat_possible(board, 2, 0b10));
+        assert!(is_beat_possible(board, 3, 0b10));
+        assert!(!is_beat_possible(board, 4, 0b10));
+        assert!(!is_beat_possible(board, 5, 0b10));
+        assert!(!is_beat_possible(board, 6, 0b10));
+        assert!(is_beat_possible(board, 7, 0b10));
 
-//         assert!(!is_beat_possible(board, 0, 0b11));
-//         assert!(!is_beat_possible(board, 1, 0b11));
-//         assert!(!is_beat_possible(board, 2, 0b11));
-//         assert!(!is_beat_possible(board, 3, 0b11));
-//         assert!(is_beat_possible(board, 4, 0b11));
-//         assert!(is_beat_possible(board, 5, 0b11));
-//         assert!(is_beat_possible(board, 6, 0b11));
-//         assert!(!is_beat_possible(board, 7, 0b11));
-//     }
-// }
+        assert!(!is_beat_possible(board, 0, 0b11));
+        assert!(!is_beat_possible(board, 1, 0b11));
+        assert!(!is_beat_possible(board, 2, 0b11));
+        assert!(!is_beat_possible(board, 3, 0b11));
+        assert!(is_beat_possible(board, 4, 0b11));
+        assert!(is_beat_possible(board, 5, 0b11));
+        assert!(is_beat_possible(board, 6, 0b11));
+        assert!(!is_beat_possible(board, 7, 0b11));
+    }
+}

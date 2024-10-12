@@ -1,18 +1,18 @@
-
 [package]
 name = "muehle_agent"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+good-web-game = "0.6.1"
 serde = { version = "1.0", features = ["derive"] }
-ggez = {version = "0.9.3", resources = "resources" }
 itertools = "0.13.0"
-rand = "0.8.5"
-regex = "1.10.6"
 rayon = "1.10.0"
+miniquad = "=0.3.13"
+
+[lib]
+path = "src/main.rs"
+crate-type = ["cdylib", "rlib"]
 
 [profile.release]
 lto = true

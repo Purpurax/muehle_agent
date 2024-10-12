@@ -1,12 +1,44 @@
+//
+//
+//
+//
+// snapshot had the ability to save and load game states, so that you can continue playing later
+// but after changing from ggez to good-web-game this feature was removed
+//
+//
+//
+//
+
+
+
+
+
+
+
+
 // use std::{fs::File, io::{Read, Write}};
 
 // use ggez::Context;
 
 // use crate::engine::enums::State;
 
-// use super::{enums::{LoadGameError, Piece}, game::Game};
+// use super::{enums::Piece, game::Game};
 
 
+// #[derive(Debug)]
+// pub struct LoadGameError {
+//     pub message: String,
+// }
+// impl LoadGameError {
+//     pub fn new(message: String) -> LoadGameError {
+//         LoadGameError {
+//             message
+//         }
+//     }
+//     pub fn empty() -> LoadGameError {
+//         LoadGameError { message: "".to_string() }
+//     }
+// }
 
 // pub fn load_game(path: String, gtx: &mut Context, window_scale: f32, play_against_computer: bool, computer_color: String) -> Result<Game, LoadGameError> {
 //     let mut string: String = String::new();

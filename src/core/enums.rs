@@ -13,21 +13,6 @@ impl FieldError {
     }
 }
 
-#[derive(Debug)]
-pub struct LoadGameError {
-    pub message: String,
-}
-impl LoadGameError {
-    pub fn new(message: String) -> LoadGameError {
-        LoadGameError {
-            message
-        }
-    }
-    pub fn empty() -> LoadGameError {
-        LoadGameError { message: "".to_string() }
-    }
-}
-
 #[derive(Clone)]
 pub struct CarryPiece {
     pub position: usize,
@@ -51,7 +36,6 @@ pub enum State {
     Setup,
     Normal,
     Take,
-    End,
     Win
 }
 impl State {
@@ -59,7 +43,6 @@ impl State {
         match self {
             State::Setup => "Setup",
             State::Take => "Take",
-            State::End => "End",
             State::Win => "Win",
             _ => "Normal",
         }.to_string()
@@ -68,9 +51,16 @@ impl State {
         match string {
             "Setup" => State::Setup,
             "Take" => State::Take,
-            "End" => State::End,
             "Win" => State::Win,
             _ => State::Normal
         }
     }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Difficulty {
+    Off,
+    Easy,
+    Medium,
+    Hard
 }

@@ -6,6 +6,9 @@ use crate::core::game::Game;
 use crate::core::position::negate_token;
 use crate::core::utils::{is_beat_possible, is_mill_closing, is_move_valid, is_part_of_mill};
 
+use super::enums::Difficulty;
+use super::utils::possible_move_count_of_position;
+
 // coords, positions
 const POSSIBLE_POSITIONS_X: [(f32, [usize; 3]); 8] = [
     (1110.0, [1, 2, 3]),
@@ -28,18 +31,31 @@ const POSSIBLE_POSITIONS_Y: [(f32, [usize; 3]); 8] = [
     (170.0, [0, 1, 7])
 ];
 
-pub fn calculate_position(x: f32, y: f32, window_scale: f32) -> Result<usize, FieldError> {
-    let accuracy: f32 = 65.0 * window_scale;
-    
+const POSSIBLE_PANEL_INDICES_X: [(f32, usize); 6] = [
+    (130.0, 0),
+    (310.0, 1),
+    (490.0, 2),
+    (790.0, 3),
+    (970.0, 4),
+    (1150.0, 5)
+];
+const POSSIBLE_PANEL_INDICES_Y: f32 = 1480.0;
+
+const RESTART_X: f32 = 640.0;
+const RESTART_Y: f32 = 1350.0;
+
+pub fn coords_to_board_position(x: f32, y: f32) -> Result<usize, FieldError> {
+    const ACCURACY: f32 = 60.0;
+
     let mut possible_positions: Vec<usize> = vec![];
     for (coords, positions) in POSSIBLE_POSITIONS_X {
-        if coords * window_scale - accuracy <= x && coords * window_scale + accuracy >= x {
+        if is_within_accuracy(x, coords, ACCURACY) {
             possible_positions.extend(&positions);
         }
     }
     
     for (coords, positions) in POSSIBLE_POSITIONS_Y {
-        if coords * window_scale - accuracy <= y && coords * window_scale + accuracy >= y {
+        if is_within_accuracy(y, coords, ACCURACY) {
             for position in positions {
                 if possible_positions.contains(&position) {
                     return Ok(position)
@@ -51,11 +67,37 @@ pub fn calculate_position(x: f32, y: f32, window_scale: f32) -> Result<usize, Fi
     return Err(FieldError::new(format!("Invalid position: {}.x {}.y", x, y)));
 }
 
+pub fn coords_to_bottom_panel_position(x: f32, y: f32) -> Result<usize, FieldError> {
+    const ACCURACY: f32 = 70.0;
+
+    if !is_within_accuracy(y, POSSIBLE_PANEL_INDICES_Y, ACCURACY) {
+        return Err(FieldError::new("".to_string()));
+    }
+    for (coords, index) in POSSIBLE_PANEL_INDICES_X {
+        if is_within_accuracy(x, coords, ACCURACY) {
+            return Ok(index)
+        }
+    }
+    return Err(FieldError::new("".to_string()));
+}
+
+pub fn is_restart_clicked(x: f32, y: f32) -> bool {
+    const ACCURACY: f32 = 30.0;
+
+    is_within_accuracy(x, RESTART_X, ACCURACY) && is_within_accuracy(y, RESTART_Y, ACCURACY)
+}
+
+fn is_within_accuracy(a: f32, target: f32, accuracy: f32) -> bool {
+    (target - accuracy) <= a && (target + accuracy) >= a
+}
+
+
 pub fn compute_button_down(position: usize, game: &mut Game) -> Result<(), FieldError> {
     let color: u8 = game.get_token_at(position);
     match game.get_state() {
-        State::Normal | State::End => {
-            if color == game.get_player_turn() {
+        State::Normal => {
+            if color == game.get_player_turn() &&
+                    (possible_move_count_of_position(game.get_board(), position) > 0 || game.get_piece_count(color) == 3) {
                 game.set_token_at(position, 0b0);
                 game.set_carry_piece(Option::Some((position, color)));
             } else {
@@ -88,6 +130,7 @@ pub fn compute_button_up(position: usize, game: &mut Game) -> Result<(), FieldEr
         }, State::Normal => {
             if carry_piece.is_some() {
                 let (carry_pos, carry_piece_color) = carry_piece.unwrap().into();
+
                 if is_move_valid(carry_pos, position, token_type, game.get_piece_count(carry_piece_color) + 1) {
                     let board_before: u64 = game.get_board();
                     game.set_token_at(position, carry_piece_color);
@@ -107,51 +150,30 @@ pub fn compute_button_up(position: usize, game: &mut Game) -> Result<(), FieldEr
                 game.next_player_turn();
                 game.update_state(Option::Some(State::Normal));
             }
-        }, State::End => {
-            if carry_piece.is_some() {
-                let (carry_pos, carry_piece_color) = carry_piece.unwrap().into();
-
-                if is_move_valid(carry_pos, position, token_type, game.get_piece_count(carry_piece_color) + 1) {
-                    let board_before: u64 = game.get_board();
-                    game.set_token_at(position, carry_piece_color);
-                    game.set_carry_piece(Option::None);
-
-                    if is_mill_closing(board_before, game.get_board(), carry_piece_color) {
-                        game.update_state(Option::Some(State::Take));
-                        println!("{} has created a mill", carry_piece_color);
-                    } else {
-                        game.next_player_turn();
-                    }
-                }
-            }
         }, State::Win => { }
     }
     game.undo_carry();
     game.update_state(Option::None);
-    // snapshot::save_game(game);
 
     Ok(())
 }
 
 pub fn compute_computer_step(action: Action, game: &mut Game) -> Result<(), FieldError> {
     let (start_position, end_position, beatable_position): (Option<usize>, usize, Option<usize>) = action.into();
+
     if start_position.is_some() {
         if compute_button_down(start_position.unwrap(), game).is_err() {
-            panic!("Invalid AI start position");
+            panic!("Invalid AI start position: {}", start_position.unwrap());
         }
     }
-    
-    // sleep(std::time::Duration::from_millis(500));
 
     if compute_button_up(end_position, game).is_err() {
-        panic!("Invalid AI end position");
+        panic!("Invalid AI end position: {}", end_position);
     }
-
-    // sleep(std::time::Duration::from_millis(500));
     
     if beatable_position.is_some() {
         if compute_button_up(beatable_position.unwrap(), game).is_err() {
-            panic!("Invalid AI beatable position2");
+            panic!("Invalid AI beatable position: {}", beatable_position.unwrap());
         }
     }
     
@@ -159,32 +181,22 @@ pub fn compute_computer_step(action: Action, game: &mut Game) -> Result<(), Fiel
 }
 
 
+pub fn compute_bottom_panel(old_white: Difficulty, old_black: Difficulty, index: usize) -> (Difficulty, Difficulty) {
+    let toggle = |old: Difficulty, new: Difficulty| {
+        if old == new {
+            Difficulty::Off
+        } else {
+            new
+        }
+    };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_calculate_position() {
-        assert_eq!(7 , calculate_position(70.0, 70.0, 1.0).unwrap())
+    match index {
+        0 => (toggle(old_white, Difficulty::Hard), old_black),
+        1 => (toggle(old_white, Difficulty::Medium), old_black),
+        2 => (toggle(old_white, Difficulty::Easy), old_black),
+        3 => (old_white, toggle(old_black, Difficulty::Easy)),
+        4 => (old_white, toggle(old_black, Difficulty::Medium)),
+        5 => (old_white, toggle(old_black, Difficulty::Hard)),
+        _ => (old_white, old_black)
     }
 }

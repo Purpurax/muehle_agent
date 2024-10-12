@@ -1,19 +1,19 @@
-use std::time::{Duration, Instant};
+use good_web_game::timer;
 use itertools::Itertools;
 
 use crate::ai::action::forward_step_boards;
 use crate::core::position::negate_token;
 use crate::core::utils::{extract_black_move_count_from_board, extract_black_token_count_from_board, extract_white_move_count_from_board, extract_white_token_count_from_board};
-use crate::ai::{Phase, PhaseEnum};
+use crate::ai::{Phase, PhaseType};
 
-pub fn minimax(board: u64, depth: usize, mut alpha: isize, mut beta: isize, maximizing_player: u8, phase: Phase, time: Instant) -> Option<isize> {
-    if time.elapsed() > Duration::from_millis(980) {
+pub fn minimax(board: u64, depth: usize, mut alpha: isize, mut beta: isize, maximizing_player: u8, phase: Phase, time: f64) -> Option<isize> {
+    if timer::time() - time > 0.980 {
         return None;
     }
     
     let black_token_count = extract_black_token_count_from_board(board);
     let white_token_count = extract_white_token_count_from_board(board);
-    if phase.phase == PhaseEnum::Move {
+    if phase.phase == PhaseType::Move {
         if (extract_black_move_count_from_board(board) == 0 && black_token_count > 3) || black_token_count == 2 {
             return Some(isize::MAX - phase.step_counter as isize)
         } else if (extract_white_move_count_from_board(board) == 0 && white_token_count > 3) || white_token_count == 2 {
@@ -77,7 +77,7 @@ fn evaluate_action(positions: u64, phase: Phase) -> isize {
     let black_token_count = extract_black_token_count_from_board(positions);
     let white_token_count = extract_white_token_count_from_board(positions);
 
-    if phase.phase == PhaseEnum::Move {
+    if phase.phase == PhaseType::Move {
         if (black_move_count == 0 && black_token_count > 3) || black_token_count == 2 {
             return isize::MAX - phase.step_counter as isize
         } else if (white_move_count == 0 && white_token_count > 3) || white_token_count == 2 {

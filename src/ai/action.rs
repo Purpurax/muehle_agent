@@ -2,7 +2,7 @@ use std::iter;
 
 use crate::core::position::{create_token_iter, negate_token, set_token_at, BLACK_TOKEN_FIRST_POSITION, WHITE_TOKEN_FIRST_POSITION};
 use crate::core::utils::{extract_black_token_count_from_board, extract_white_token_count_from_board, is_beat_possible, is_mill_closing, is_move_valid, update_possible_move_count};
-use crate::ai::{Phase, PhaseEnum};
+use crate::ai::{Phase, PhaseType};
 
 pub struct Action {
     pub start_position: Option<usize>,
@@ -49,7 +49,7 @@ pub fn list_moves<'a>(board: &'a u64, token_type: u8, phase: Phase) -> impl Iter
         0b101010101010101010101010101010101010101010101010
     };
 
-    if phase.phase == PhaseEnum::Set {
+    if phase.phase == PhaseType::Set {
         let mut shifted: u64 = 0b11;
 
         return itertools::Either::Left(
@@ -99,97 +99,3 @@ pub fn list_moves<'a>(board: &'a u64, token_type: u8, phase: Phase) -> impl Iter
         )
     }
 }
-
-#[cfg(test)]
-mod tests {
-    // use crate::ai::{position::{print_board, set_token_at}, utils::get_action_from_board, Phase, PhaseEnum};
-
-    use super::*;
-
-    #[test]
-    fn test_forward_step_boards2() {
-        let board = 0b0;
-        let phase = Phase::new(PhaseEnum::Set, 0);
-
-        for forward_step in forward_step_boards(&board, 0b11, phase) {
-            for inner_forward_step in forward_step_boards(&forward_step, 0b10, phase) {
-                println!("{:#066b}", inner_forward_step);
-            }
-        }
-    }
-}
-
-//     #[test]
-//     fn test_speed_of_list_moves() {
-//         let board = 0b111000000000111000000011000011001100101010101010; // 4.9s, 5.8s, 5.1s, 5.0s, 5.1s, 5.0s
-//         let phase = Phase::new(PhaseEnum::Move, 17);
-        
-//         let now = std::time::Instant::now();
-
-//         for _ in 0..40000000 {
-//             let _ = forward_step_boards(&board, 0b11, phase);
-//         }
-//         println!("The test took: {:?}", now.elapsed());
-//     }
-
-//     #[test]
-//     fn test_generate_actions() {
-//         use crate::ai::position::decode_positions;
-//         use crate::ai::{Phase, PhaseEnum};
-
-//         let now = std::time::Instant::now();
-
-//         let board = "WBEEEEWBEEEWEEWEWEBBBBBB".to_string();
-//         let decoded_board = decode_positions(board);
-
-//         for forward_board in forward_step_boards(&decoded_board, 0b10, Phase::new(PhaseEnum::Set, 1)) {
-//             println!("forward board: {}", forward_board);
-//         }
-//         println!("Time elapsed: {:?}", now.elapsed());
-//     }
-
-//     #[test]
-//     fn test_list_moves() {
-//         use crate::ai::action::list_moves;
-//         use crate::ai::{Phase, PhaseEnum};
-
-//         let board: u64 = 0b111000000000111000000011000011001100101010101010; // WBEEEEWBEEEWEEWEWEBBBBBB
-//         let expected_moves = vec![
-//             (Some(0), 8),
-//             (Some(6), 5),
-//             (Some(11), 10),
-//             (Some(11), 12),
-//             (Some(14), 13),
-//             (Some(14), 15),
-//             (Some(16), 8),
-//             (Some(16), 17)
-//         ];
-
-//         let mut expected_boards = Vec::new();
-//         for expected_move in expected_moves {
-//             let mut applyed_move_board = board.clone();
-//             applyed_move_board = set_token_at(applyed_move_board, expected_move.0.unwrap(), 0b00);
-//             applyed_move_board = set_token_at(applyed_move_board, expected_move.1, 0b11);
-//             expected_boards.push(applyed_move_board);
-//         }
-
-//         for ele in list_moves(&board, 0b11, Phase::new(PhaseEnum::Move, 1)) {
-//             assert!(expected_boards.contains(&ele));
-//         }
-//     }
-
-//     #[test]
-//     fn test_forward_step_boards() {
-//         use crate::ai::position::{decode_positions, encode_positions};
-//         use crate::ai::{Phase, PhaseEnum};
-
-//         let board = decode_positions("EEEEEEEEEEEEEEEEEWBWEBBW".to_string());
-//         print_board(board);
-//         println!("{}", encode_positions(board));
-
-//         for forward_board in forward_step_boards(&board, 0b11, Phase::new(PhaseEnum::Set, 18)) {
-//             let action = get_action_from_board(board, forward_board, 0b11);
-//             println!("{}, move: start_{}, end_{}, beat_{}, --- {}", encode_positions(forward_board), action.start_position.unwrap_or(30), action.end_position, action.beatable_position.unwrap_or(30), action.to_string());
-//         }
-//     }
-// }

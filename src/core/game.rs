@@ -32,7 +32,7 @@ impl Game {
             board: insert_number_of_possible_moves_to_board(insert_token_count_to_board(board)),
             player_turn: 0b11,
             carry_piece: Option::None,
-            state: State::End,
+            state: State::Normal,
             setup_pieces_left: 0,
         }
     }
@@ -49,56 +49,6 @@ impl Game {
         self.player_turn.clone()
     }
 
-    pub fn get_carry_piece(&self) -> Option<CarryPiece> {
-        self.carry_piece.clone()
-    }
-
-    pub fn get_state(&self) -> State {
-        self.state.clone()
-    }
-
-    pub fn update_state(&mut self, state: Option<State>) {
-        if state.is_some() {
-            self.state = state.unwrap();
-        }
-        if self.state != State::Take {
-            if self.setup_pieces_left > 0 {
-                self.state = State::Setup;
-            } else if self.get_winner() != 0b0 {
-                self.state = State::Win;
-            } else if self.get_piece_count(0b11) <= 3 || self.get_piece_count(0b10) <= 3 {
-                self.state = State::End;
-            } else {
-                self.state = State::Normal;
-            }
-        }
-    }
-
-    pub fn get_winner(&self) -> u8 {
-        let state: State = self.get_state();
-        let (black_tokens, white_tokens) = (self.get_piece_count(0b10), self.get_piece_count(0b11));
-        let (black_possible_moves, white_possible_moves) = (extract_black_move_count_from_board(self.get_board()), extract_white_move_count_from_board(self.get_board()));
-        if state != State::End && state != State::Normal {
-            return 0b00
-        }
-
-        if white_tokens < 3 || (white_tokens > 3 && white_possible_moves == 0) {
-            return 0b10
-        } else if black_tokens < 3 || (black_tokens > 3 && black_possible_moves == 0) {
-            return 0b11
-        } else {
-            return 0b00
-        }
-    }
-
-    pub fn get_setup_pieces_left(&self) -> u8 {
-        self.setup_pieces_left
-    }
-
-    pub fn decrease_setup_pieces_left(&mut self) {
-        self.setup_pieces_left = std::cmp::max(self.setup_pieces_left - 1, 0);
-    }
-
     pub fn next_player_turn(&mut self) {
         if self.player_turn == 0b11 {
             self.player_turn = 0b10;
@@ -107,6 +57,10 @@ impl Game {
         } else {
             panic!("invalid player turn detected");
         }
+    }
+
+    pub fn get_carry_piece(&self) -> Option<CarryPiece> {
+        self.carry_piece.clone()
     }
 
     pub fn set_carry_piece(&mut self, new_carry_piece: Option<(usize, u8)>) {
@@ -125,6 +79,46 @@ impl Game {
             self.set_token_at(position, piece_color);
             self.set_carry_piece(Option::None);
         }
+    }
+
+    pub fn get_state(&self) -> State {
+        self.state.clone()
+    }
+
+    pub fn update_state(&mut self, state: Option<State>) {
+        if self.get_state() == State::Win {
+            return
+        }
+        
+        if state.is_some() {
+            self.state = state.unwrap();
+        }
+        if self.state != State::Take {
+            if self.setup_pieces_left > 0 {
+                self.state = State::Setup;
+            } else if self.get_winner() != 0b0 {
+                self.state = State::Win;
+            } else {
+                self.state = State::Normal;
+            }
+        }
+    }
+
+    pub fn get_winner(&self) -> u8 {
+        let (black_tokens, white_tokens) = (self.get_piece_count(0b10), self.get_piece_count(0b11));
+        let (black_possible_moves, white_possible_moves) = (extract_black_move_count_from_board(self.get_board()), extract_white_move_count_from_board(self.get_board()));
+
+        if white_tokens < 3 || (white_tokens > 3 && white_possible_moves == 0) {
+            return 0b10
+        } else if black_tokens < 3 || (black_tokens > 3 && black_possible_moves == 0) {
+            return 0b11
+        } else {
+            return 0b00
+        }
+    }
+
+    pub fn get_setup_pieces_left(&self) -> u8 {
+        self.setup_pieces_left
     }
 
     pub fn get_piece_count(&self, piece_color: u8) -> u8 {
@@ -164,21 +158,9 @@ impl Game {
         let mut new_board = self.get_board();
         if removed_token {
             new_board = set_token_at(new_board, position, 0b0);
-            // new_board = update_possible_move_count(new_board, old_color, position, true);
-            // new_board -= if old_color == 0b11 {
-            //     WHITE_TOKEN_FIRST_POSITION
-            // } else {
-            //     BLACK_TOKEN_FIRST_POSITION
-            // };
         }
         if placed_token {
             new_board = set_token_at(new_board, position, color);
-            // new_board = update_possible_move_count(new_board, color, position, false);
-            // new_board += if color == 0b11 {
-            //     WHITE_TOKEN_FIRST_POSITION
-            // } else {
-            //     BLACK_TOKEN_FIRST_POSITION
-            // };
         }
         new_board = insert_number_of_possible_moves_to_board(new_board);
         new_board = insert_token_count_to_board(new_board);

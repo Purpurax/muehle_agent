@@ -1,0 +1,4 @@
+board: EEEEEEEEBEEWEEEEEEEEWEEE
+player_turn: Black
+state: Setup
+setup_pieces_left: 15

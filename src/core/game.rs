@@ -38,7 +38,7 @@ impl Game {
     }
 
     pub fn get_board(&self) -> u64 {
-        self.board.clone()
+        self.board
     }
 
     pub fn set_board(&mut self, new_board: u64) {
@@ -46,7 +46,7 @@ impl Game {
     }
 
     pub fn get_player_turn(&self) -> u8 {
-        self.player_turn.clone()
+        self.player_turn
     }
 
     pub fn next_player_turn(&mut self) {
@@ -82,7 +82,7 @@ impl Game {
     }
 
     pub fn get_state(&self) -> State {
-        self.state.clone()
+        self.state
     }
 
     pub fn update_state(&mut self, state: Option<State>) {

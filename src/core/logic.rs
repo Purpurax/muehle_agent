@@ -171,9 +171,9 @@ pub fn compute_computer_step(action: Action, game: &mut Game) -> Result<(), Fiel
         panic!("Invalid AI end position: {}", end_position);
     }
     
-    if beatable_position.is_some() {
-        if compute_button_up(beatable_position.unwrap(), game).is_err() {
-            panic!("Invalid AI beatable position: {}", beatable_position.unwrap());
+    if let Some(beatable_position) = beatable_position {
+        if compute_button_up(beatable_position, game).is_err() {
+            panic!("Invalid AI beatable position: {}", beatable_position);
         }
     }
     

@@ -33,7 +33,7 @@ pub fn encode_single_position(position: usize) -> String {
 pub fn decode_positions(encoded_positions: String) -> u64 {
     let mut decoded_positions: u64 = 0b0;
 
-    for char in encoded_positions.trim().chars().into_iter() {
+    for char in encoded_positions.trim().chars() {
         match char {
             'B' => decoded_positions |= 0b10,
             'W' => decoded_positions |= 0b11,

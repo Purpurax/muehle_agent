@@ -64,7 +64,7 @@ pub fn coords_to_board_position(x: f32, y: f32) -> Result<usize, FieldError> {
         }
     }
 
-    return Err(FieldError::new(format!("Invalid position: {}.x {}.y", x, y)));
+    Err(FieldError::new(format!("Invalid position: {}.x {}.y", x, y)))
 }
 
 pub fn coords_to_bottom_panel_position(x: f32, y: f32) -> Result<usize, FieldError> {
@@ -78,7 +78,7 @@ pub fn coords_to_bottom_panel_position(x: f32, y: f32) -> Result<usize, FieldErr
             return Ok(index)
         }
     }
-    return Err(FieldError::new("".to_string()));
+    Err(FieldError::new("".to_string()))
 }
 
 pub fn is_restart_clicked(x: f32, y: f32) -> bool {
@@ -161,10 +161,8 @@ pub fn compute_button_up(position: usize, game: &mut Game) -> Result<(), FieldEr
 pub fn compute_computer_step(action: Action, game: &mut Game) -> Result<(), FieldError> {
     let (start_position, end_position, beatable_position): (Option<usize>, usize, Option<usize>) = action.into();
 
-    if start_position.is_some() {
-        if compute_button_down(start_position.unwrap(), game).is_err() {
-            panic!("Invalid AI start position: {}", start_position.unwrap());
-        }
+    if start_position.is_some() && compute_button_down(start_position.unwrap(), game).is_err() {
+        panic!("Invalid AI start position: {}", start_position.unwrap());
     }
 
     if compute_button_up(end_position, game).is_err() {

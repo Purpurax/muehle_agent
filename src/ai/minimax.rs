@@ -41,9 +41,7 @@ pub fn minimax(board: u64, depth: usize, mut alpha: isize, mut beta: isize, maxi
 
         for forward_board in forward_step_boards {
             let eval = minimax(forward_board, depth - 1, alpha, beta, negate_token(maximizing_player), phase.increased(), time);
-            if eval.is_none() {
-                return None;
-            }
+            eval?;
             max_eval = std::cmp::max(max_eval, eval.unwrap());
             
             alpha = std::cmp::max(alpha, eval.unwrap());
@@ -51,14 +49,12 @@ pub fn minimax(board: u64, depth: usize, mut alpha: isize, mut beta: isize, maxi
                 break;
             }
         }
-        return Some(max_eval)
+        Some(max_eval)
     } else {
         let mut min_eval = isize::MAX - phase.step_counter as isize;
         for forward_board in forward_step_boards {
             let eval = minimax(forward_board, depth - 1, alpha, beta, negate_token(maximizing_player), phase.increased(), time);
-            if eval.is_none() {
-                return None;
-            }
+            eval?;
             min_eval = std::cmp::min(min_eval, eval.unwrap());
             
             beta = std::cmp::min(beta, eval.unwrap());
@@ -66,7 +62,7 @@ pub fn minimax(board: u64, depth: usize, mut alpha: isize, mut beta: isize, maxi
                 break;
             }
         }
-        return Some(min_eval)
+        Some(min_eval)
     }
 }
 
@@ -88,5 +84,5 @@ fn evaluate_action(positions: u64, phase: Phase) -> isize {
     score += (white_token_count as isize - black_token_count as isize) * 1000;
     score += white_move_count as isize - black_move_count as isize;
     
-    return score
+    score
 }

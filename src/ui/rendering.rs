@@ -66,7 +66,7 @@ fn calculate_image_for_setup(game: &Game, position: usize, images: &HashMap<Stri
                 return Option::None;
             }
         };
-    return Option::Some(image);
+    Option::Some(image)
 }
 
 fn calculate_image_for_normal(game: &Game, position: usize, images: &HashMap<String, Image>, computer_white: bool, computer_black: bool) -> Option<Image> {
@@ -89,20 +89,18 @@ fn calculate_image_for_normal(game: &Game, position: usize, images: &HashMap<Str
                     }
                 }
             }
+        } else if field_color == 0b11 && player_color == 0b11 && (possible_move_count_of_position(board, position) > 0 || game.get_piece_count(player_color) <= 3) && !computer_white {
+            images["white outlined"].clone()
+        } else if field_color == 0b11 {
+            images["white"].clone()
+        } else if field_color == 0b10 && player_color == 0b10 && (possible_move_count_of_position(board, position) > 0 || game.get_piece_count(player_color) <= 3) && !computer_black {
+            images["black outlined"].clone()
+        } else if field_color == 0b10 {
+            images["black"].clone()
         } else {
-            if field_color == 0b11 && player_color == 0b11 && (possible_move_count_of_position(board, position) > 0 || game.get_piece_count(player_color) <= 3) && !computer_white {
-                images["white outlined"].clone()
-            } else if field_color == 0b11 {
-                images["white"].clone()
-            } else if field_color == 0b10 && player_color == 0b10 && (possible_move_count_of_position(board, position) > 0 || game.get_piece_count(player_color) <= 3) && !computer_black {
-                images["black outlined"].clone()
-            } else if field_color == 0b10 {
-                images["black"].clone()
-            } else {
-                return Option::None;
-            }
+            return Option::None;
         };
-    return Option::Some(image);
+    Option::Some(image)
 }
 
 fn calculate_image_for_take(game: &Game, position: usize, images: &HashMap<String, Image>) -> Option<Image> {
@@ -130,7 +128,7 @@ fn calculate_image_for_take(game: &Game, position: usize, images: &HashMap<Strin
             (0b10, 0b10) => images["black"].clone(),
             (_, _) => return Option::None
         };
-    return Option::Some(image);
+    Option::Some(image)
 }
 
 fn calculate_image_for_win(game: &Game, position: usize, images: &HashMap<String, Image>) -> Option<Image> {
@@ -145,7 +143,7 @@ fn calculate_image_for_win(game: &Game, position: usize, images: &HashMap<String
             (0b10, 0b10) => images["take black"].clone(),
             (_, _) => return Option::None
         };
-    return Option::Some(image);
+    Option::Some(image)
 }
 
 

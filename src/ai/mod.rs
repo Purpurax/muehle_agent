@@ -46,7 +46,7 @@ pub fn compute_step(game: &Game, difficulty: Difficulty) -> Option<Action> {
         if depth == maximum_depth {
             break;
         }
-        depth += 1;
+
         let mut best_action = None;
         let mut best_score = if token_type == 0b11 { isize::MIN } else { isize::MAX };
         _actions_with_scores = forward_step_boards(&board, token_type, phase).par_bridge().map(|forward_board| {
@@ -70,10 +70,11 @@ pub fn compute_step(game: &Game, difficulty: Difficulty) -> Option<Action> {
         best_action_total = best_action;
         best_score_total = best_score;
         last_depth_time_elapsed = timer::time() - now;
+        depth += 1;
     }
 
     println!("-> Execution time {:.3?} \n-> best score {} \n-> depth: {}\n", last_depth_time_elapsed, best_score_total, depth);
-    return best_action_total;
+    best_action_total
 }
 
 #[derive(Clone, Copy, PartialEq)]

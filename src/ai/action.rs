@@ -20,7 +20,7 @@ impl Action {
     }
 }
 
-pub fn forward_step_boards<'a>(board: &'a u64, token_type: u8, phase: Phase) -> impl Iterator<Item=u64> + 'a {
+pub fn forward_step_boards(board: &u64, token_type: u8, phase: Phase) -> impl Iterator<Item=u64> + '_ {
     list_moves(board, token_type, phase)
         .flat_map(move |applyed_move_board| {
             if is_mill_closing(*board, applyed_move_board, token_type) {
@@ -42,7 +42,7 @@ pub fn forward_step_boards<'a>(board: &'a u64, token_type: u8, phase: Phase) -> 
     })
 }
 
-pub fn list_moves<'a>(board: &'a u64, token_type: u8, phase: Phase) -> impl Iterator<Item=u64> + 'a {
+pub fn list_moves(board: &u64, token_type: u8, phase: Phase) -> impl Iterator<Item=u64> + '_ {
     let token_extended: u64 = if token_type == 0b11 {
         0b111111111111111111111111111111111111111111111111
     } else {
@@ -52,7 +52,7 @@ pub fn list_moves<'a>(board: &'a u64, token_type: u8, phase: Phase) -> impl Iter
     if phase.phase == PhaseType::Set {
         let mut shifted: u64 = 0b11;
 
-        return itertools::Either::Left(
+        itertools::Either::Left(
             (0..24).filter_map(move |index| {
                 let result = if *board & shifted == 0 {
                     let mut new_board = *board | (shifted & token_extended);

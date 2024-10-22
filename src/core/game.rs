@@ -15,6 +15,12 @@ pub struct Game {
 }
 
 
+impl Default for Game {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Game {
     pub fn new() -> Game {
         Game {
@@ -109,7 +115,7 @@ impl Game {
         let (black_possible_moves, white_possible_moves) = (extract_black_move_count_from_board(self.get_board()), extract_white_move_count_from_board(self.get_board()));
 
         if white_tokens < 3 || (white_tokens > 3 && white_possible_moves == 0) {
-            return 0b10
+            0b10
         } else if black_tokens < 3 || (black_tokens > 3 && black_possible_moves == 0) {
             return 0b11
         } else {

@@ -23,9 +23,9 @@ impl CarryPiece {
         CarryPiece {position, color}
     }
 }
-impl Into<(usize, u8)> for CarryPiece {
-    fn into(self) -> (usize, u8) {
-        (self.position, self.color)
+impl From<CarryPiece> for (usize, u8) {
+    fn from(val: CarryPiece) -> Self {
+        (val.position, val.color)
     }
 }
 

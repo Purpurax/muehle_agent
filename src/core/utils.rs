@@ -102,7 +102,7 @@ use crate::ai::{Phase, PhaseType};
 pub fn get_winner(board: u64, phase: Phase) -> u8 {
     let (black_tokens, white_tokens) = (get_number_of_tokens(board, 0b10), get_number_of_tokens(board, 0b11));
     if phase.phase == PhaseType::Move && white_tokens < 3 {
-        return 0b10
+        0b10
     } else if phase.phase == PhaseType::Move && black_tokens < 3 {
         return 0b11
     } else {
@@ -167,7 +167,7 @@ pub fn is_move_valid(start_position: usize, end_position: usize, end_token: u8, 
         return true
     }
 
-    return false
+    false
 }
 
 pub fn get_possible_move_count(board: u64, token_type: u8) -> usize {
@@ -185,7 +185,7 @@ pub fn get_possible_move_count(board: u64, token_type: u8) -> usize {
         index -= 1;
         board_mut >>= 2;
     }
-    return count
+    count
 }
 
 // When adding a token to the board at "position":
@@ -227,7 +227,7 @@ pub fn update_possible_move_count(mut board: u64, token_type: u8, position: usiz
                 }
             }
     });
-    return board
+    board
 }
 
 pub fn possible_move_count_of_position(board: u64, position: usize) -> usize {
@@ -240,7 +240,7 @@ pub fn possible_move_count_of_position(board: u64, position: usize) -> usize {
             count += 1;
         }
     }
-    return count
+    count
 }
 
 pub fn is_neighbor(position1: usize, position2: usize) -> bool {
@@ -294,7 +294,7 @@ pub fn is_beat_possible(board: u64, position: usize, token_current_player: u8) -
         return true
     }
     
-    return is_all_part_of_mill(board, token_of_opponent)
+    is_all_part_of_mill(board, token_of_opponent)
 }
 
 /*
@@ -331,7 +331,7 @@ pub fn get_action_from_board(mut board_before: u64, mut board_after: u64, token_
         board_after >>= 2;
     });
 
-    return Action::new(start_position, end_position, beatable_position)
+    Action::new(start_position, end_position, beatable_position)
 }
 
 #[cfg(test)]
@@ -457,15 +457,15 @@ mod tests {
         use crate::core::utils::is_move_valid;
 
         // move phase
-        assert_eq!(is_move_valid(7, 6, 0b11, 9), false);
-        assert_eq!(is_move_valid(7, 0, 0b00, 9), true);
-        assert_eq!(is_move_valid(8, 16, 0b00, 9), true);
-        assert_eq!(is_move_valid(9, 1, 0b00, 9), false);
+        assert!(!is_move_valid(7, 6, 0b11, 9));
+        assert!(is_move_valid(7, 0, 0b00, 9));
+        assert!(is_move_valid(8, 16, 0b00, 9));
+        assert!(!is_move_valid(9, 1, 0b00, 9));
 
         // end phase
-        assert_eq!(is_move_valid(4, 23, 0b00, 3), true);
-        assert_eq!(is_move_valid(1, 5, 0b00, 3), true);
-        assert_eq!(is_move_valid(4, 1, 0b11, 3), false);
+        assert!(is_move_valid(4, 23, 0b00, 3));
+        assert!(is_move_valid(1, 5, 0b00, 3));
+        assert!(!is_move_valid(4, 1, 0b11, 3));
     }
 
     #[test]
@@ -473,20 +473,20 @@ mod tests {
         use crate::core::utils::is_neighbor;
         let now = std::time::Instant::now();
         for _ in 0..10000 {
-            assert_eq!(is_neighbor(0, 1), true);
-            assert_eq!(is_neighbor(0, 7), true);
-            assert_eq!(is_neighbor(0, 8), true);
-            assert_eq!(is_neighbor(10, 2), true);
-            assert_eq!(is_neighbor(6, 5), true);
-            assert_eq!(is_neighbor(16, 17), true);
-            assert_eq!(is_neighbor(22, 14), true);
-            assert_eq!(is_neighbor(0, 2), false);
-            assert_eq!(is_neighbor(0, 16), false);
-            assert_eq!(is_neighbor(1, 9), false);
-            assert_eq!(is_neighbor(22, 10), false);
-            assert_eq!(is_neighbor(7, 8), false);
-            assert_eq!(is_neighbor(23, 17), false);
-            assert_eq!(is_neighbor(16, 0), false);
+            assert!(is_neighbor(0, 1));
+            assert!(is_neighbor(0, 7));
+            assert!(is_neighbor(0, 8));
+            assert!(is_neighbor(10, 2));
+            assert!(is_neighbor(6, 5));
+            assert!(is_neighbor(16, 17));
+            assert!(is_neighbor(22, 14));
+            assert!(!is_neighbor(0, 2));
+            assert!(!is_neighbor(0, 16));
+            assert!(!is_neighbor(1, 9));
+            assert!(!is_neighbor(22, 10));
+            assert!(!is_neighbor(7, 8));
+            assert!(!is_neighbor(23, 17));
+            assert!(!is_neighbor(16, 0));
         }
         println!("Time elapsed: {:?}", now.elapsed());
     }

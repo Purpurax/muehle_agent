@@ -23,11 +23,11 @@ pub fn encode_positions(board: u64) -> String {
             _ => encoded_positions.push('E')
         };
     }
-    return encoded_positions
+    encoded_positions
 }
 
 pub fn encode_single_position(position: usize) -> String {
-    return (position + 1).to_string();
+    (position + 1).to_string()
 }
 
 pub fn decode_positions(encoded_positions: String) -> u64 {
@@ -44,7 +44,7 @@ pub fn decode_positions(encoded_positions: String) -> u64 {
     }
     decoded_positions >>= 2;
 
-    return decoded_positions
+    decoded_positions
 }
 
 pub fn get_token_at(board: u64, position: usize) -> u8 {
@@ -69,7 +69,7 @@ pub fn reverse_token_of_board(mut board: u64) -> u64 {
     let mut reversed_board: u64 = 0;
     for i in 0..24 {
         let token = negate_token((board & 0b11) as u8) as u64;
-        reversed_board |= token << i*2;
+        reversed_board |= token << (i*2);
         board >>= 2;
     }
     reversed_board
